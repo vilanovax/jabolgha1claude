@@ -39,6 +39,10 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [shakeConfirm, setShakeConfirm] = useState(false);
   const executeAction = useGameStore((s) => s.executeAction);
+  const advanceTime = useGameStore((s) => s.advanceTime);
+  const forceEndOfDay = useGameStore((s) => s.forceEndOfDay);
+  const isEndOfDay = useGameStore((s) => s.isEndOfDay);
+  const currentMinutes = useGameStore((s) => s.currentMinutes);
   const wavePhase = useGameStore((s) => s.wave.currentPhase);
 
   // Reset state when category changes
@@ -78,6 +82,16 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
 
     setTimeout(() => {
       const actionResult = executeAction(categoryId, selectedIndex);
+
+      if (actionResult.success) {
+        // Advance game time
+        if (categoryId === "sleep" && (option.id === "full_sleep" || option.id === "golden_sleep")) {
+          forceEndOfDay();
+        } else {
+          advanceTime(option.costs.time);
+        }
+      }
+
       setResult(actionResult);
       setPhase("result");
       if (actionResult.success && onDone) {
@@ -134,6 +148,8 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
             onSelect={setSelectedIndex}
             onConfirm={handleConfirm}
             shakeConfirm={shakeConfirm}
+            isEndOfDay={isEndOfDay}
+            currentMinutes={currentMinutes}
           />
         )}
 
@@ -154,7 +170,7 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
 
 // ─── Phase: Choosing ─────────────────────────
 
-function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, onSelect, onConfirm, shakeConfirm }: {
+function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, onSelect, onConfirm, shakeConfirm, isEndOfDay, currentMinutes }: {
   category: (typeof ACTION_CATEGORIES)[0];
   catMod?: { effectMult?: number; costMult?: number };
   waveLabel: string;
@@ -163,6 +179,8 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
   onSelect: (index: number) => void;
   onConfirm: () => void;
   shakeConfirm: boolean;
+  isEndOfDay: boolean;
+  currentMinutes: number;
 }) {
   const player = useGameStore((s) => s.player);
   const bank = useGameStore((s) => s.bank);
@@ -179,6 +197,27 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
 
   // Smart suggestion
   const suggestion = getSuggestion(player, category);
+
+  const remainingMinutes = 960 - currentMinutes;
+
+  // End of day → show block message
+  if (isEndOfDay) {
+    return (
+      <div style={{ textAlign: "center", padding: "30px 0" }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🌙</div>
+        <div style={{
+          fontSize: 15, fontWeight: 800, color: "white", marginBottom: 8,
+        }}>
+          روز تموم شده!
+        </div>
+        <div style={{
+          fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 4,
+        }}>
+          خلاصه روز رو ببین و روز بعد رو شروع کن
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -227,6 +266,16 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
         <StatMini emoji="💰" value={bank.checking} isMoney color="#4ade80" label="موجودی" />
       </div>
 
+      {/* Remaining time */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        gap: 4, marginBottom: 10,
+        fontSize: 9, fontWeight: 700,
+        color: remainingMinutes < 120 ? "#fbbf24" : "rgba(255,255,255,0.35)",
+      }}>
+        🕐 {toPersian(remainingMinutes)} دقیقه باقی‌مونده از روز
+      </div>
+
       {/* Options */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {category.options.map((opt, i) => (
@@ -239,6 +288,7 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
             playerMoney={bank.checking}
             costMult={catMod?.costMult}
             effectMult={catMod?.effectMult}
+            wouldEndDay={currentMinutes + opt.costs.time >= 960}
             onSelect={() => onSelect(i)}
           />
         ))}
@@ -353,7 +403,7 @@ function StatMini({ emoji, value, max, color, label, isMoney }: {
 
 // ─── Option Card ────────────────────────────────
 
-function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, costMult, effectMult, onSelect }: {
+function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, costMult, effectMult, wouldEndDay, onSelect }: {
   option: ActionOption;
   index: number;
   isSelected: boolean;
@@ -361,6 +411,7 @@ function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, cost
   playerMoney: number;
   costMult?: number;
   effectMult?: number;
+  wouldEndDay?: boolean;
   onSelect: () => void;
 }) {
   const cm = costMult ?? 1;
@@ -421,11 +472,23 @@ function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, cost
             {option.name}
           </span>
         </div>
-        <span style={{
-          fontSize: 8, fontWeight: 600, color: "rgba(255,255,255,0.3)",
-        }}>
-          ⏱ {toPersian(option.costs.time)} دقیقه
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {wouldEndDay && (
+            <span style={{
+              fontSize: 7, fontWeight: 700, color: "#fbbf24",
+              padding: "1px 5px", borderRadius: 4,
+              background: "rgba(251,191,36,0.1)",
+              border: "1px solid rgba(251,191,36,0.15)",
+            }}>
+              پایان روز!
+            </span>
+          )}
+          <span style={{
+            fontSize: 8, fontWeight: 600, color: "rgba(255,255,255,0.3)",
+          }}>
+            ⏱ {toPersian(option.costs.time)} دقیقه
+          </span>
+        </div>
       </div>
 
       {/* Costs + Effects inline */}

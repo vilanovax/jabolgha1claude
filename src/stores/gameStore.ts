@@ -30,6 +30,7 @@ import { evaluateTriggers } from "@/engine/triggerEngine";
 import { applyEventImpacts } from "@/engine/impactEngine";
 import { ACTION_CATEGORIES, WAVE_ACTION_MODIFIERS } from "@/data/actionTemplates";
 import type { ActionEffect } from "@/data/actionTemplates";
+import { toPersian } from "@/data/mock";
 
 export interface ActionResult {
   success: boolean;
@@ -46,6 +47,29 @@ export interface RoutineState {
 }
 
 type RoutineSlot = keyof RoutineState;
+
+export type DayPhase = "morning" | "noon" | "evening" | "night";
+
+export function minutesToPhase(m: number): DayPhase {
+  if (m < 240) return "morning";
+  if (m < 480) return "noon";
+  if (m < 720) return "evening";
+  return "night";
+}
+
+export function minutesToClock(m: number): string {
+  const real = 7 * 60 + m; // offset to 07:00
+  const h = Math.floor(real / 60);
+  const min = real % 60;
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+const PHASE_LABELS: Record<DayPhase, string> = {
+  morning: "صبح",
+  noon: "ظهر",
+  evening: "عصر",
+  night: "شب",
+};
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -118,6 +142,10 @@ interface GameState {
   routineStreak: number;
   routineCompletedToday: string[];   // slot names completed today
 
+  // Time system state
+  currentMinutes: number;            // 0–960 (16 waking hours)
+  isEndOfDay: boolean;
+
   // Actions
   tick: () => void;
   setRunning: (v: boolean) => void;
@@ -125,6 +153,12 @@ interface GameState {
   executeAction: (categoryId: string, optionIndex: number) => ActionResult;
   setRoutineSlot: (slot: RoutineSlot, categoryId: string | null) => void;
   completeRoutineSlot: (slot: RoutineSlot) => void;
+  advanceTime: (minutes: number) => void;
+  forceEndOfDay: () => void;
+  startNextDay: () => void;
+  getPhase: () => DayPhase;
+  getTimeLabel: () => string;
+  getDayProgress: () => number;
 }
 
 export const useGameStore = create<GameState>()(
@@ -156,7 +190,55 @@ export const useGameStore = create<GameState>()(
       routineStreak: 0,
       routineCompletedToday: [],
 
+      // Time system initial state
+      currentMinutes: 0,
+      isEndOfDay: false,
+
       setRunning: (v) => set({ isRunning: v }),
+
+      advanceTime: (minutes) => {
+        set((state) => {
+          if (state.isEndOfDay) return {};
+          const newMinutes = Math.min(960, state.currentMinutes + minutes);
+          return {
+            currentMinutes: newMinutes,
+            isEndOfDay: newMinutes >= 960,
+          };
+        });
+      },
+
+      forceEndOfDay: () => {
+        set({ currentMinutes: 960, isEndOfDay: true });
+      },
+
+      startNextDay: () => {
+        set((state) => {
+          const newPlayer = { ...state.player };
+          newPlayer.dayInGame += 1;
+          // Overnight recovery: restore 30% of missing energy
+          const missingEnergy = 100 - newPlayer.energy;
+          newPlayer.energy = Math.min(100, newPlayer.energy + Math.round(missingEnergy * 0.3));
+
+          return {
+            player: newPlayer,
+            currentMinutes: 0,
+            isEndOfDay: false,
+            actionsCompletedToday: [],
+            routineCompletedToday: [],
+          };
+        });
+      },
+
+      getPhase: () => minutesToPhase(get().currentMinutes),
+
+      getTimeLabel: () => {
+        const m = get().currentMinutes;
+        const phase = minutesToPhase(m);
+        const clock = minutesToClock(m);
+        return `${PHASE_LABELS[phase]} – ${toPersian(clock)}`;
+      },
+
+      getDayProgress: () => get().currentMinutes / 960,
 
       executeAction: (categoryId, optionIndex) => {
         const category = ACTION_CATEGORIES.find((c) => c.id === categoryId);
@@ -364,6 +446,8 @@ export const useGameStore = create<GameState>()(
           routine: { morning: null, noon: null, evening: null, night: null },
           routineStreak: 0,
           routineCompletedToday: [],
+          currentMinutes: 0,
+          isEndOfDay: false,
         });
       },
     }),
@@ -382,6 +466,8 @@ export const useGameStore = create<GameState>()(
         routine: state.routine,
         routineStreak: state.routineStreak,
         routineCompletedToday: state.routineCompletedToday,
+        currentMinutes: state.currentMinutes,
+        isEndOfDay: state.isEndOfDay,
       }),
     },
   ),

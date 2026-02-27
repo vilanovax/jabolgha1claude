@@ -10,6 +10,13 @@ const TIME_SLOTS = [
   { key: "night" as const, emoji: "🌙", label: "شب" },
 ];
 
+const PHASE_ORDER: Record<string, number> = {
+  morning: 0,
+  noon: 1,
+  evening: 2,
+  night: 3,
+};
+
 interface Props {
   onOpenAction: (categoryId: string) => void;
   onOpenSlotPicker: (slot: "morning" | "noon" | "evening" | "night") => void;
@@ -20,7 +27,11 @@ export default function DailyRoutine({ onOpenAction, onOpenSlotPicker }: Props) 
   const routineStreak = useGameStore((s) => s.routineStreak);
   const routineCompletedToday = useGameStore((s) => s.routineCompletedToday);
   const completeRoutineSlot = useGameStore((s) => s.completeRoutineSlot);
+  const getPhase = useGameStore((s) => s.getPhase);
+  const isEndOfDay = useGameStore((s) => s.isEndOfDay);
 
+  const currentPhase = getPhase();
+  const currentPhaseOrder = PHASE_ORDER[currentPhase];
   const completedCount = routineCompletedToday.length;
   const allDone = completedCount === 4;
 
@@ -77,12 +88,16 @@ export default function DailyRoutine({ onOpenAction, onOpenSlotPicker }: Props) 
             : null;
           const isCompleted = routineCompletedToday.includes(slot.key);
 
+          const slotOrder = PHASE_ORDER[slot.key];
+          const isCurrent = slot.key === currentPhase && !isEndOfDay;
+          const isPast = slotOrder < currentPhaseOrder || isEndOfDay;
+          const isDisabled = isCompleted || (isPast && !isCompleted);
+
           const handleTap = () => {
-            if (isCompleted) return;
+            if (isDisabled) return;
             if (!assignedId) {
               onOpenSlotPicker(slot.key);
             } else {
-              // Open action sheet, then mark slot as completed on done
               onOpenAction(assignedId);
               completeRoutineSlot(slot.key);
             }
@@ -92,8 +107,9 @@ export default function DailyRoutine({ onOpenAction, onOpenSlotPicker }: Props) 
             <div
               key={slot.key}
               onClick={handleTap}
+              className={isCurrent && !isCompleted ? "anim-phase-pulse" : ""}
               style={{
-                cursor: isCompleted ? "default" : "pointer",
+                cursor: isDisabled ? "default" : "pointer",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -102,13 +118,17 @@ export default function DailyRoutine({ onOpenAction, onOpenSlotPicker }: Props) 
                 borderRadius: 16,
                 background: isCompleted
                   ? "rgba(74,222,128,0.06)"
-                  : "rgba(255,255,255,0.04)",
+                  : isCurrent
+                    ? "rgba(99,102,241,0.08)"
+                    : "rgba(255,255,255,0.04)",
                 border: isCompleted
                   ? "1px solid rgba(74,222,128,0.15)"
-                  : assignedId
-                    ? "1px solid rgba(255,255,255,0.08)"
-                    : "1px dashed rgba(255,255,255,0.1)",
-                opacity: isCompleted ? 0.6 : 1,
+                  : isCurrent
+                    ? "1.5px solid rgba(99,102,241,0.3)"
+                    : assignedId
+                      ? "1px solid rgba(255,255,255,0.08)"
+                      : "1px dashed rgba(255,255,255,0.1)",
+                opacity: isPast && !isCompleted ? 0.35 : isCompleted ? 0.6 : 1,
                 transition: "all 0.2s ease",
               }}
             >
@@ -118,7 +138,9 @@ export default function DailyRoutine({ onOpenAction, onOpenSlotPicker }: Props) 
               {/* Time label */}
               <span style={{
                 fontSize: 9, fontWeight: 700,
-                color: "rgba(255,255,255,0.4)",
+                color: isCurrent
+                  ? "#818cf8"
+                  : "rgba(255,255,255,0.4)",
               }}>
                 {slot.label}
               </span>
@@ -142,11 +164,15 @@ export default function DailyRoutine({ onOpenAction, onOpenSlotPicker }: Props) 
                 fontSize: 7, fontWeight: 600,
                 color: isCompleted
                   ? "#4ade80"
-                  : category
-                    ? "rgba(255,255,255,0.3)"
-                    : "rgba(255,255,255,0.15)",
+                  : isPast && !isCompleted
+                    ? "#f87171"
+                    : isCurrent
+                      ? "#818cf8"
+                      : category
+                        ? "rgba(255,255,255,0.3)"
+                        : "rgba(255,255,255,0.15)",
               }}>
-                {isCompleted ? "✅" : category ? category.name : "انتخاب"}
+                {isCompleted ? "✅" : isPast && !isCompleted ? "—" : isCurrent ? "الان" : category ? category.name : "انتخاب"}
               </span>
             </div>
           );

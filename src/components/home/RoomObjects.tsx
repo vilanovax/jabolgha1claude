@@ -1,5 +1,6 @@
 "use client";
 import { player, activeCourse, fridgeItems, toPersian } from "@/data/mock";
+import { useGameStore } from "@/stores/gameStore";
 
 interface RoomObject {
   id: string;
@@ -69,12 +70,17 @@ export default function RoomObjects({
   done: string[];
   onOpenAction: (categoryId: string) => void;
 }) {
+  const isEndOfDay = useGameStore((s) => s.isEndOfDay);
+
   return (
     <div style={{
       display: "grid",
       gridTemplateColumns: "repeat(3, 1fr)",
       gap: 12,
       padding: "4px 8px",
+      opacity: isEndOfDay ? 0.4 : 1,
+      pointerEvents: isEndOfDay ? "none" : "auto",
+      transition: "opacity 0.3s ease",
     }}>
       {OBJECTS.map((obj) => {
         const status = obj.getStatus(done);

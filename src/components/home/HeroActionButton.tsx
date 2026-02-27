@@ -1,5 +1,6 @@
 "use client";
 import { player, homeActivities, activeCourse, toPersian } from "@/data/mock";
+import { useGameStore } from "@/stores/gameStore";
 
 type Activity = (typeof homeActivities)[0];
 
@@ -19,9 +20,34 @@ export default function HeroActionButton({
   done: string[];
   onOpenAction: (categoryId: string) => void;
 }) {
+  const isEndOfDay = useGameStore((s) => s.isEndOfDay);
   const suggestion = getSuggestion(done);
   const isDone = done.includes(suggestion.id);
   const mainReward = suggestion.rewards[0];
+
+  if (isEndOfDay) {
+    return (
+      <div style={{
+        display: "flex", justifyContent: "center",
+        padding: "8px 0 12px",
+      }}>
+        <div style={{
+          padding: "12px 32px",
+          borderRadius: 50,
+          background: "rgba(139,92,246,0.08)",
+          border: "1px solid rgba(139,92,246,0.15)",
+          color: "#a78bfa",
+          fontSize: 13,
+          fontWeight: 700,
+          textAlign: "center",
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
+          <span style={{ fontSize: 16 }}>🌙</span>
+          خلاصه روز رو ببین
+        </div>
+      </div>
+    );
+  }
 
   if (isDone) {
     return (

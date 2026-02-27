@@ -1,29 +1,19 @@
 "use client";
-import { useState, useEffect } from "react";
-import { player, bank, formatMoney, toPersian } from "@/data/mock";
-
-const stats = [
-  { icon: "⭐", value: () => toPersian(player.stars), color: "#facc15" },
-  { icon: "✨", value: () => toPersian(player.xp), color: "#c084fc" },
-  { icon: "💰", value: () => formatMoney(bank.checking + bank.savings), color: "#4ade80" },
-  { icon: "⚡", value: () => toPersian(player.energy), color: "#fb923c" },
-  { icon: "🍔", value: () => toPersian(player.hunger), color: "#f87171" },
-];
+import { useGameStore } from "@/stores/gameStore";
+import { formatMoney, toPersian } from "@/data/mock";
+import TimeBar from "./TimeBar";
 
 export default function GameHUD() {
-  const [clock, setClock] = useState("--:--");
+  const player = useGameStore((s) => s.player);
+  const bank = useGameStore((s) => s.bank);
 
-  useEffect(() => {
-    const tick = () => {
-      const d = new Date();
-      setClock(
-        toPersian(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`)
-      );
-    };
-    tick();
-    const id = setInterval(tick, 10_000);
-    return () => clearInterval(id);
-  }, []);
+  const stats = [
+    { icon: "⭐", value: toPersian(player.stars), color: "#facc15" },
+    { icon: "✨", value: toPersian(player.xp), color: "#c084fc" },
+    { icon: "💰", value: formatMoney(bank.checking + bank.savings), color: "#4ade80" },
+    { icon: "⚡", value: toPersian(player.energy), color: "#fb923c" },
+    { icon: "🍔", value: toPersian(player.hunger), color: "#f87171" },
+  ];
 
   return (
     <div style={{
@@ -46,7 +36,7 @@ export default function GameHUD() {
         border: "1px solid rgba(255,255,255,0.08)",
         pointerEvents: "auto",
       }}>
-        {/* Row 1: Day · Clock · Level */}
+        {/* Row 1: Day + Level */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           marginBottom: 6,
@@ -57,21 +47,18 @@ export default function GameHUD() {
             روز {toPersian(player.dayInGame)}
           </span>
           <span style={{
-            fontSize: 16, fontWeight: 900, color: "white",
-            letterSpacing: "0.08em",
-            fontVariantNumeric: "tabular-nums",
-            textShadow: "0 0 12px rgba(99,102,241,0.4)",
-          }}>
-            {clock}
-          </span>
-          <span style={{
             fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)",
           }}>
             Lv.{toPersian(player.level)}
           </span>
         </div>
 
-        {/* Row 2: Stat icons */}
+        {/* Row 2: TimeBar */}
+        <div style={{ marginBottom: 8 }}>
+          <TimeBar />
+        </div>
+
+        {/* Row 3: Stat icons */}
         <div style={{
           display: "flex", justifyContent: "space-between", gap: 2,
         }}>
@@ -84,7 +71,7 @@ export default function GameHUD() {
                 fontSize: 10, fontWeight: 800, color: s.color,
                 fontVariantNumeric: "tabular-nums",
               }}>
-                {s.value()}
+                {s.value}
               </span>
             </div>
           ))}

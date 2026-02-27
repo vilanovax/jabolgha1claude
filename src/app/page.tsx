@@ -8,13 +8,17 @@ import DailyRoutine from "@/components/home/DailyRoutine";
 import RoomObjects from "@/components/home/RoomObjects";
 import ActionBottomSheet from "@/components/home/ActionBottomSheet";
 import RoutineSlotPicker from "@/components/home/RoutineSlotPicker";
+import EndOfDaySummary from "@/components/home/EndOfDaySummary";
 import BottomNav from "@/components/layout/BottomNav";
+import { useGameStore } from "@/stores/gameStore";
 import type { RoutineState } from "@/stores/gameStore";
 
 export default function HomePage() {
   const [done, setDone] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [pickerSlot, setPickerSlot] = useState<keyof RoutineState | null>(null);
+  const isEndOfDay = useGameStore((s) => s.isEndOfDay);
+  const startNextDay = useGameStore((s) => s.startNextDay);
 
   const handleDone = (id: string) => {
     setDone((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -94,6 +98,12 @@ export default function HomePage() {
       <RoutineSlotPicker
         slot={pickerSlot}
         onClose={() => setPickerSlot(null)}
+      />
+
+      {/* End of Day Summary */}
+      <EndOfDaySummary
+        isOpen={isEndOfDay && activeCategory === null}
+        onClose={startNextDay}
       />
 
       <BottomNav />
