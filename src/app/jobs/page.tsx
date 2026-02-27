@@ -2,7 +2,7 @@
 import { useState } from "react";
 import TopHeader from "@/components/layout/TopHeader";
 import BottomNav from "@/components/layout/BottomNav";
-import { jobListings, getJobTypeColor, formatMoney } from "@/data/mock";
+import { jobListings, getJobTypeColor, formatMoney, toPersian } from "@/data/mock";
 
 export default function JobsPage() {
   const [tab, setTab] = useState<"suitable" | "all">("suitable");
@@ -40,7 +40,7 @@ export default function JobsPage() {
             color: "#16a34a", border: "1px solid #bbf7d0",
             boxShadow: "0 2px 8px rgba(34,197,94,0.15)",
           }}>
-            {suitable.length} آگهی مناسب
+            {toPersian(suitable.length)} آگهی مناسب
           </div>
         </div>
 
@@ -52,8 +52,8 @@ export default function JobsPage() {
           boxShadow: "0 4px 16px rgba(10,22,40,0.3)",
         }}>
           {[
-            { key: "suitable", label: `🟢 مناسب (${suitable.length})` },
-            { key: "all", label: `📋 همه (${jobListings.length})` },
+            { key: "suitable", label: `🟢 مناسب (${toPersian(suitable.length)})` },
+            { key: "all", label: `📋 همه (${toPersian(jobListings.length)})` },
           ].map((t) => (
             <button key={t.key} onClick={() => setTab(t.key as "suitable" | "all")}
               style={{
@@ -101,7 +101,7 @@ export default function JobsPage() {
                     </div>
                   </div>
                   <div style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0 }}>
-                    {job.postedAgo === 0 ? "امروز" : `${job.postedAgo} روز پیش`}
+                    {job.postedAgo === 0 ? "امروز" : `${toPersian(job.postedAgo)} روز پیش`}
                   </div>
                 </div>
 
@@ -123,7 +123,7 @@ export default function JobsPage() {
                       background: "#f1f5f9", color: "#475569",
                       borderColor: "#e2e8f0",
                     }}>
-                      {req.skill} Lv.{req.level}+
+                      {req.skill} Lv.{toPersian(req.level)}+
                     </span>
                   ))}
                 </div>

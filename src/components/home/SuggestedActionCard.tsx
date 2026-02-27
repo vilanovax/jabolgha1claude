@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { player, homeActivities, activeCourse } from "@/data/mock";
+import { player, homeActivities, activeCourse, toPersian } from "@/data/mock";
 
 type Activity = (typeof homeActivities)[0];
 
@@ -81,7 +81,7 @@ export default function SuggestedActionCard({
             borderRadius: 20, background: "#fefce8", color: "#a16207",
             border: "1px solid #fde68a",
           }}>
-            {timeCost.icon} {timeCost.label}
+            {timeCost.icon} {toPersian(timeCost.label)}
           </span>
         )}
         {energyCost && (
@@ -90,7 +90,7 @@ export default function SuggestedActionCard({
             borderRadius: 20, background: "#fff1f2", color: "#dc2626",
             border: "1px solid #fecdd3",
           }}>
-            {energyCost.icon} {energyCost.label}
+            {energyCost.icon} {toPersian(energyCost.label)}
           </span>
         )}
         {mainReward && (
@@ -99,7 +99,7 @@ export default function SuggestedActionCard({
             borderRadius: 20, background: "#f0fdf4", color: "#16a34a",
             border: "1px solid #bbf7d0",
           }}>
-            {mainReward.icon} {mainReward.label}
+            {mainReward.icon} {toPersian(mainReward.label)}
           </span>
         )}
       </div>

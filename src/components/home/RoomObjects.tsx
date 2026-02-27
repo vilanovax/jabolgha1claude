@@ -1,0 +1,123 @@
+"use client";
+import Link from "next/link";
+import { player, activeCourse, fridgeItems, toPersian } from "@/data/mock";
+
+interface RoomObject {
+  id: string;
+  emoji: string;
+  label: string;
+  getStatus: (done: string[]) => string;
+  href: string;
+  glowColor: string;
+}
+
+const OBJECTS: RoomObject[] = [
+  {
+    id: "desk",
+    emoji: "🖥",
+    label: "میز کار",
+    getStatus: (done) => done.includes("work") ? "✅" : "شیفت",
+    href: "/jobs",
+    glowColor: "rgba(212,168,67,0.3)",
+  },
+  {
+    id: "bookshelf",
+    emoji: "📚",
+    label: "قفسه کتاب",
+    getStatus: () =>
+      activeCourse ? `روز ${toPersian(activeCourse.currentDay)}` : "—",
+    href: "/skills",
+    glowColor: "rgba(59,130,246,0.3)",
+  },
+  {
+    id: "kitchen",
+    emoji: "🍳",
+    label: "آشپزخانه",
+    getStatus: () => `${toPersian(fridgeItems.length)} آیتم`,
+    href: "/fridge",
+    glowColor: "rgba(249,115,22,0.3)",
+  },
+  {
+    id: "bed",
+    emoji: "🛏",
+    label: "تخت",
+    getStatus: () => `${toPersian(player.energy)}٪`,
+    href: "#",
+    glowColor: "rgba(139,92,246,0.3)",
+  },
+  {
+    id: "gym",
+    emoji: "🏋️",
+    label: "باشگاه",
+    getStatus: (done) => done.includes("exercise") ? "✅" : "ورزش",
+    href: "#",
+    glowColor: "rgba(34,197,94,0.3)",
+  },
+  {
+    id: "sofa",
+    emoji: "☕",
+    label: "مبل",
+    getStatus: (done) => done.includes("rest") ? "✅" : "آرام",
+    href: "#",
+    glowColor: "rgba(236,72,153,0.3)",
+  },
+];
+
+export default function RoomObjects({ done }: { done: string[] }) {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: 12,
+      padding: "4px 8px",
+    }}>
+      {OBJECTS.map((obj) => {
+        const status = obj.getStatus(done);
+
+        return (
+          <Link
+            key={obj.id}
+            href={obj.href}
+            className="room-object"
+            style={{
+              textDecoration: "none",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              padding: "14px 8px 10px",
+              borderRadius: 20,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            {/* Icon with glow */}
+            <div style={{
+              fontSize: 36,
+              lineHeight: 1,
+              filter: `drop-shadow(0 3px 10px ${obj.glowColor})`,
+              marginBottom: 2,
+            }}>
+              {obj.emoji}
+            </div>
+
+            {/* Label */}
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)",
+            }}>
+              {obj.label}
+            </div>
+
+            {/* Status */}
+            <div style={{
+              fontSize: 9, fontWeight: 600,
+              color: status === "✅" ? "#4ade80" : "rgba(255,255,255,0.3)",
+            }}>
+              {status}
+            </div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import TopHeader from "@/components/layout/TopHeader";
 import BottomNav from "@/components/layout/BottomNav";
-import { fridgeItems, supermarketItems, player, formatMoney } from "@/data/mock";
+import { fridgeItems, supermarketItems, player, formatMoney, toPersian } from "@/data/mock";
 
 export default function FridgePage() {
   const [tab, setTab] = useState<"fridge" | "shop">("fridge");
@@ -68,7 +68,7 @@ export default function FridgePage() {
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                 <span style={{ fontSize: 16, filter: `drop-shadow(0 0 5px ${s.glow})` }}>{s.emoji}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{s.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: s.color, marginRight: "auto" }}>{s.value}٪</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: s.color, marginRight: "auto" }}>{toPersian(s.value)}٪</span>
               </div>
               <div style={{
                 background: "rgba(255,255,255,0.1)", borderRadius: "var(--r-full)",
@@ -169,14 +169,14 @@ export default function FridgePage() {
               }}>
                 <span className="badge-reward" style={{
                   background: "#f0fdf4", color: "#16a34a", borderColor: "#bbf7d0",
-                }}>⚡ +{item.energy} انرژی</span>
+                }}>⚡ +{toPersian(item.energy)} انرژی</span>
                 <span className="badge-reward" style={{
                   background: "#f5f3ff", color: "#7c3aed", borderColor: "#ddd6fe",
-                }}>😊 +{item.happiness} خوشحالی</span>
+                }}>😊 +{toPersian(item.happiness)} خوشحالی</span>
                 {item.study > 0 && (
                   <span className="badge-reward" style={{
                     background: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe",
-                  }}>🧠 +{item.study}٪ تمرکز</span>
+                  }}>🧠 +{toPersian(item.study)}٪ تمرکز</span>
                 )}
               </div>
             </div>

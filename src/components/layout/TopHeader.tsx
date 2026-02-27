@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { player, bank, formatMoney } from "@/data/mock";
+import { player, bank, formatMoney, toPersian } from "@/data/mock";
 
 export default function TopHeader() {
   const [clock, setClock] = useState("--:--");
@@ -10,7 +10,7 @@ export default function TopHeader() {
       const d = new Date();
       const h = String(d.getHours()).padStart(2, "0");
       const m = String(d.getMinutes()).padStart(2, "0");
-      setClock(`${h}:${m}`);
+      setClock(toPersian(`${h}:${m}`));
     };
     tick();
     const id = setInterval(tick, 10_000);
@@ -57,7 +57,7 @@ export default function TopHeader() {
         <div className="stat-pill" style={{ padding: "3px 10px", gap: 4 }}>
           <span style={{ fontSize: 12 }}>📅</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>
-            روز {player.dayInGame}
+            روز {toPersian(player.dayInGame)}
           </span>
         </div>
 
@@ -81,7 +81,7 @@ export default function TopHeader() {
         }}>
           <span style={{ fontSize: 12, filter: "drop-shadow(0 0 4px rgba(240,201,102,0.5))" }}>⭐</span>
           <span style={{ fontSize: 11, fontWeight: 800, color: "#F0C966" }}>
-            {xp} XP
+            {toPersian(xp)} XP
           </span>
         </div>
       </div>
@@ -174,7 +174,7 @@ function GlowPill({
         textAlign: "left",
         textShadow: `0 0 6px ${glowColor}`,
       }}>
-        {value}٪
+        {toPersian(value)}٪
       </span>
     </div>
   );

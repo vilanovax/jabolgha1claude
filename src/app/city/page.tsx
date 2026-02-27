@@ -2,7 +2,7 @@
 import { useState } from "react";
 import TopHeader from "@/components/layout/TopHeader";
 import BottomNav from "@/components/layout/BottomNav";
-import { cityEvents, cityPlayers, formatMoney } from "@/data/mock";
+import { cityEvents, cityPlayers, formatMoney, toPersian } from "@/data/mock";
 
 const cityTabs = ["رویدادها", "بازار", "رنکینگ"];
 
@@ -193,7 +193,7 @@ function MarketTab() {
                   background: `${s.color}15`, color: s.color,
                   borderRadius: "var(--r-full)", border: `1px solid ${s.color}30`,
                 }}>{s.status}</span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", minWidth: 28, textAlign: "left" }}>{s.pct}٪</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", minWidth: 28, textAlign: "left" }}>{toPersian(s.pct)}٪</span>
               </div>
             </div>
             <div style={{
@@ -252,7 +252,7 @@ function RankingTab() {
               color: p.rank <= 3 || p.isMe ? "white" : "#64748b",
               boxShadow: p.rank <= 3 ? "0 4px 12px rgba(212,168,67,0.3)" : "none",
             }}>
-              {p.rank <= 3 ? p.badge : p.rank}
+              {p.rank <= 3 ? p.badge : toPersian(p.rank)}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{

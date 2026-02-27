@@ -103,6 +103,41 @@ body {
   z-index: 1;
 }
 
+/* ─── Game Scene Background (Home only) ───────── */
+.scene-bg {
+  background: linear-gradient(170deg, #0a0e27 0%, #111b3c 30%, #162044 50%, #1a1a3e 70%, #120e28 100%);
+  position: relative;
+  overflow: hidden;
+}
+/* Center radial glow */
+.scene-bg::before {
+  content: '';
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 350px;
+  height: 350px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, rgba(59,130,246,0.06) 40%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+/* Subtle bottom floor glow */
+.scene-bg::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  height: 180px;
+  background: linear-gradient(to top, rgba(15,10,40,0.6), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* ─── Typography ────────────────────────────────── */
 .text-xs    { font-size: 11px; line-height: 1.5; }
 .text-sm    { font-size: 13px; line-height: 1.5; }
@@ -390,4 +425,124 @@ body {
 }
 .anim-breathe {
   animation: breathe 4s ease-in-out infinite;
+}
+
+/* ─── Game Scene Animations ───────────────────── */
+@keyframes hero-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3), 0 4px 16px rgba(0,0,0,0.3); }
+  50%      { box-shadow: 0 0 35px rgba(99,102,241,0.5), 0 4px 20px rgba(0,0,0,0.3); }
+}
+@keyframes tap-bounce {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+@keyframes particle-drift {
+  0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-80px) scale(1); }
+}
+@keyframes glow-ring {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.08); }
+}
+.anim-hero-pulse {
+  animation: hero-pulse 2.5s ease-in-out infinite;
+}
+.anim-tap-bounce {
+  animation: tap-bounce 0.25s ease;
+}
+
+/* ─── Room Object Tap ─────────────────────────── */
+.room-object {
+  transition: transform 0.12s ease;
+  cursor: pointer;
+  user-select: none;
+}
+.room-object:active {
+  transform: scale(0.88);
+}
+
+/* ─── Glass Nav ───────────────────────────────── */
+.glass-nav {
+  background: rgba(10, 14, 39, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ─── Mission Animations ─────────────────────── */
+@keyframes mission-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(250,204,21,0.4)); }
+  50%      { filter: drop-shadow(0 0 12px rgba(250,204,21,0.8)); }
+}
+@keyframes sparkle {
+  0%   { opacity: 0; transform: scale(0) rotate(0deg); }
+  50%  { opacity: 1; transform: scale(1.2) rotate(180deg); }
+  100% { opacity: 0; transform: scale(0) rotate(360deg); }
+}
+@keyframes float-up {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.6); }
+}
+@keyframes confetti-fall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(60px) rotate(360deg); }
+}
+@keyframes reward-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes badge-bounce {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
+}
+@keyframes progress-shine {
+  0%   { left: -100%; }
+  100% { left: 200%; }
+}
+@keyframes claim-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(250,204,21,0.3); }
+  50%      { box-shadow: 0 0 24px rgba(250,204,21,0.6), 0 0 40px rgba(250,204,21,0.2); }
+}
+
+.anim-mission-glow {
+  animation: mission-glow 2s ease-in-out infinite;
+}
+.anim-badge-bounce {
+  animation: badge-bounce 1.5s ease-in-out infinite;
+}
+.anim-reward-pop {
+  animation: reward-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.anim-claim-pulse {
+  animation: claim-pulse 1.5s ease-in-out infinite;
+}
+
+/* Progress bar shine effect */
+.progress-bar-animated::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: progress-shine 2s ease-in-out infinite;
+}
+
+/* CTA bounce on hover/focus */
+.btn-bounce {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-bounce:active {
+  transform: scale(0.92);
+}
+
+/* Mission icon tap effect */
+.mission-icon-tap:active {
+  transform: scale(0.85);
+  transition: transform 0.1s ease;
 }

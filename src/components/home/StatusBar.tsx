@@ -1,13 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { player, bank, formatMoney } from "@/data/mock";
-
-function getMoodText(happiness: number): string {
-  if (happiness >= 75) return "عالی";
-  if (happiness >= 50) return "خوبه";
-  if (happiness >= 30) return "نه‌چندان";
-  return "بد";
-}
+import { player, bank, formatMoney, toPersian } from "@/data/mock";
 
 export default function StatusBar() {
   const [clock, setClock] = useState("--:--");
@@ -16,15 +9,13 @@ export default function StatusBar() {
     const tick = () => {
       const d = new Date();
       setClock(
-        `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+        toPersian(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`)
       );
     };
     tick();
     const id = setInterval(tick, 10_000);
     return () => clearInterval(id);
   }, []);
-
-  const mood = getMoodText(player.happiness);
 
   return (
     <div style={{
@@ -35,21 +26,21 @@ export default function StatusBar() {
       border: "1px solid rgba(255,255,255,0.08)",
       boxShadow: "0 4px 20px rgba(10,22,40,0.4)",
     }}>
-      {/* Row 1: XP · Clock · Day */}
+      {/* Row 1: Day · Clock · XP★ */}
       <div style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         marginBottom: 8,
       }}>
-        {/* XP pill */}
+        {/* Day pill */}
         <div style={{
-          fontSize: 11, fontWeight: 700, color: "#F0C966",
-          background: "rgba(212,168,67,0.15)",
-          border: "1px solid rgba(212,168,67,0.25)",
+          fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)",
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.1)",
           borderRadius: 20, padding: "3px 10px",
         }}>
-          XP {player.xp}★
+          روز {toPersian(player.dayInGame)}
         </div>
 
         {/* Clock */}
@@ -61,27 +52,27 @@ export default function StatusBar() {
           {clock}
         </div>
 
-        {/* Day */}
+        {/* XP pill */}
         <div style={{
-          fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)",
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.1)",
+          fontSize: 11, fontWeight: 700, color: "#F0C966",
+          background: "rgba(212,168,67,0.15)",
+          border: "1px solid rgba(212,168,67,0.25)",
           borderRadius: 20, padding: "3px 10px",
         }}>
-          روز {player.dayInGame}
+          {toPersian(player.xp)} XP★
         </div>
       </div>
 
-      {/* Row 2: 4 compact stat pills */}
+      {/* Row 2: money, star, energy, hunger */}
       <div style={{
         display: "flex",
         gap: 6,
       }}>
         {[
           { icon: "💰", value: formatMoney(bank.checking + bank.savings), color: "#4ade80" },
-          { icon: "⚡", value: `${player.energy}٪`, color: "#facc15" },
-          { icon: "🍔", value: `${player.hunger}٪`, color: "#f87171" },
-          { icon: "😊", value: mood, color: "#93c5fd" },
+          { icon: "⭐", value: toPersian(player.stars), color: "#facc15" },
+          { icon: "⚡", value: `${toPersian(player.energy)}٪`, color: "#fb923c" },
+          { icon: "🍔", value: `${toPersian(player.hunger)}٪`, color: "#f87171" },
         ].map((s) => (
           <div key={s.icon} style={{
             flex: 1,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import TopHeader from "@/components/layout/TopHeader";
 import BottomNav from "@/components/layout/BottomNav";
-import { skills, activeCourse } from "@/data/mock";
+import { skills, activeCourse, toPersian } from "@/data/mock";
 
 export default function SkillsPage() {
   const [sessionDone, setSessionDone] = useState(activeCourse.completedToday);
@@ -69,7 +69,7 @@ export default function SkillsPage() {
                   {activeCourse.emoji} {activeCourse.name}
                 </div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
-                  روز {activeCourse.currentDay} از {activeCourse.totalDays} · +{activeCourse.xpReward} XP پاداش
+                  روز {toPersian(activeCourse.currentDay)} از {toPersian(activeCourse.totalDays)} · +{toPersian(activeCourse.xpReward)} XP پاداش
                 </div>
               </div>
               {/* XP Ring */}
@@ -90,7 +90,7 @@ export default function SkillsPage() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 11, fontWeight: 800, color: "#93c5fd",
                 }}>
-                  {sessionPercent}٪
+                  {toPersian(sessionPercent)}٪
                 </div>
               </div>
             </div>
@@ -114,7 +114,7 @@ export default function SkillsPage() {
             {/* Sessions */}
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>
-                session‌های امروز ({sessionDone}/{activeCourse.sessionsPerDay})
+                session‌های امروز ({toPersian(sessionDone)}/{toPersian(activeCourse.sessionsPerDay)})
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 {Array.from({ length: activeCourse.sessionsPerDay }).map((_, i) => {
@@ -143,7 +143,7 @@ export default function SkillsPage() {
               </div>
               {sessionDone < activeCourse.sessionsPerDay && (
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 8, textAlign: "center" }}>
-                  ⏱ session بعدی: {activeCourse.nextSessionIn} دقیقه دیگه
+                  ⏱ session بعدی: {toPersian(activeCourse.nextSessionIn)} دقیقه دیگه
                 </div>
               )}
               {sessionDone === activeCourse.sessionsPerDay && (
@@ -222,7 +222,7 @@ function SkillSection({ title, items, color }: {
                     background: `${color}15`, color,
                     border: `1px solid ${color}30`,
                     borderRadius: "var(--r-full)",
-                  }}>Lv.{skill.level}</span>
+                  }}>Lv.{toPersian(skill.level)}</span>
                 </div>
               </div>
               <div style={{

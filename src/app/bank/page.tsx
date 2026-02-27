@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import TopHeader from "@/components/layout/TopHeader";
 import BottomNav from "@/components/layout/BottomNav";
-import { bank, formatMoney } from "@/data/mock";
+import { bank, formatMoney, toPersian } from "@/data/mock";
 
 export default function BankPage() {
   const monthlyInterest = Math.round(bank.savings * (bank.savingsRate / 100));
@@ -89,7 +89,7 @@ export default function BankPage() {
         <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
           {[
             { label: "💳 حساب جاری", value: bank.checking, sub: "بدون سود", glow: "rgba(96,165,250,0.2)" },
-            { label: "💰 پس‌انداز", value: bank.savings, sub: `سود ${bank.savingsRate}٪ ماهانه`, glow: "rgba(74,222,128,0.2)" },
+            { label: "💰 پس‌انداز", value: bank.savings, sub: `سود ${toPersian(bank.savingsRate)}٪ ماهانه`, glow: "rgba(74,222,128,0.2)" },
           ].map((acc) => (
             <div key={acc.label} style={{
               flex: 1, padding: "14px 12px", borderRadius: 20,
@@ -138,7 +138,7 @@ export default function BankPage() {
                 </div>
                 <div>
                   <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 3 }}>مانده قسط</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{loan.remaining} ماه</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a" }}>{toPersian(loan.remaining)} ماه</div>
                 </div>
               </div>
 
@@ -154,7 +154,7 @@ export default function BankPage() {
                 }} />
               </div>
               <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 6 }}>
-                {24 - loan.remaining} از ۲۴ قسط پرداخت شده
+                {toPersian(24 - loan.remaining)} از ۲۴ قسط پرداخت شده
               </div>
             </div>
           </div>

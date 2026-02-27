@@ -11,9 +11,122 @@ export const player = {
   savings: 50_000_000,
   xp: 1240,
   xpNext: 2000,
+  stars: 18,
   scenario: "فارغ‌التحصیل",
   dayInGame: 47,
 };
+
+export type MissionStatus = "pending" | "in_progress" | "done" | "claimable";
+
+export const storyArc = {
+  id: "sa1",
+  title: "یه چیزی برای آینده بذار کنار",
+  character: "👴",
+  characterName: "بابا",
+  dialogue: "پسرم، یاد بگیر پس‌انداز کنی. آینده‌ات بهش بستگی داره.",
+  progress: 6_200_000,
+  target: 10_000_000,
+  unit: "تومان" as const,
+  reward: { xp: 120, stars: 1, money: 2_000_000 },
+  status: "in_progress" as MissionStatus,
+  episode: 1,
+  totalEpisodes: 5,
+};
+
+export const dailyMissions = [
+  {
+    id: "d1",
+    title: "صبحانه بخور",
+    emoji: "🍳",
+    duration: "۵ دقیقه",
+    reward: { xp: 20, stars: 0, money: 0 },
+    status: "claimable" as MissionStatus,
+  },
+  {
+    id: "d2",
+    title: "یک شیفت کار کن",
+    emoji: "💼",
+    duration: "۸ ساعت",
+    reward: { xp: 50, stars: 1, money: 1_000_000 },
+    status: "pending" as MissionStatus,
+  },
+  {
+    id: "d3",
+    title: "یک جلسه مطالعه کن",
+    emoji: "📚",
+    duration: "۱۵ دقیقه",
+    reward: { xp: 30, stars: 0, money: 0 },
+    status: "pending" as MissionStatus,
+  },
+];
+
+export const weeklyMissions = [
+  {
+    id: "w1",
+    title: "۵ روز پشت سر هم کار کن",
+    emoji: "📈",
+    progress: 3,
+    target: 5,
+    reward: { xp: 200, stars: 2, money: 0 },
+    status: "in_progress" as MissionStatus,
+  },
+  {
+    id: "w2",
+    title: "۳ بار ورزش کن",
+    emoji: "🏋️",
+    progress: 1,
+    target: 3,
+    reward: { xp: 100, stars: 1, money: 0 },
+    status: "in_progress" as MissionStatus,
+  },
+];
+
+export const milestones = [
+  {
+    id: "ms1",
+    title: "اولین ۵۰ میلیون",
+    emoji: "💰",
+    progress: 40_000_000,
+    target: 50_000_000,
+    unit: "تومان" as const,
+    reward: { xp: 500, stars: 10, money: 0 },
+    badge: "سرمایه‌گذار جوان",
+    badgeEmoji: "💎",
+  },
+  {
+    id: "ms2",
+    title: "مدرک حرفه‌ای",
+    emoji: "🎓",
+    progress: 2,
+    target: 5,
+    unit: "دوره" as const,
+    reward: { xp: 300, stars: 5, money: 0 },
+    badge: "استاد",
+    badgeEmoji: "🎓",
+  },
+  {
+    id: "ms3",
+    title: "کارمند قابل‌اعتماد",
+    emoji: "💼",
+    progress: 32,
+    target: 90,
+    unit: "روز" as const,
+    reward: { xp: 400, stars: 8, money: 5_000_000 },
+    badge: "حرفه‌ای",
+    badgeEmoji: "🏅",
+  },
+];
+
+export function getMissionStats() {
+  const activeCount =
+    (storyArc.status === "in_progress" ? 1 : 0) +
+    dailyMissions.filter((m) => m.status === "pending" || m.status === "in_progress").length +
+    weeklyMissions.filter((m) => m.status === "in_progress").length;
+  const claimableCount =
+    (storyArc.status === "claimable" ? 1 : 0) +
+    dailyMissions.filter((m) => m.status === "claimable").length;
+  return { activeCount, claimableCount };
+}
 
 export const housing = {
   type: "آپارتمان معمولی",
@@ -457,10 +570,16 @@ export const homeActivities = [
 ];
 
 // Helpers
+
+/** Convert Latin digits to Persian */
+export function toPersian(input: string | number): string {
+  return String(input).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
+}
+
 export function formatMoney(n: number): string {
-  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + "B";
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-  if (n >= 1_000) return (n / 1_000).toFixed(0) + "K";
+  if (n >= 1_000_000_000) return toPersian((n / 1_000_000_000).toFixed(1)) + "B";
+  if (n >= 1_000_000) return toPersian((n / 1_000_000).toFixed(1)) + "M";
+  if (n >= 1_000) return toPersian((n / 1_000).toFixed(0)) + "K";
   return n.toLocaleString("fa-IR");
 }
 
