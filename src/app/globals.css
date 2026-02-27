@@ -426,6 +426,34 @@ body {
 .anim-breathe {
   animation: breathe 4s ease-in-out infinite;
 }
+@keyframes rotate-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.anim-rotate-slow {
+  animation: rotate-slow 12s linear infinite;
+}
+@keyframes badge-glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(212,168,67,0.2), 0 0 16px rgba(212,168,67,0.1); }
+  50%      { box-shadow: 0 0 16px rgba(212,168,67,0.4), 0 0 32px rgba(212,168,67,0.2); }
+}
+.anim-badge-glow {
+  animation: badge-glow-pulse 3s ease-in-out infinite;
+}
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.anim-sheet-up {
+  animation: sheet-slide-up 0.3s ease-out forwards;
+}
+@keyframes backdrop-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.anim-backdrop-in {
+  animation: backdrop-fade-in 0.2s ease-out forwards;
+}
 
 /* ─── Game Scene Animations ───────────────────── */
 @keyframes hero-pulse {
@@ -545,4 +573,81 @@ body {
 .mission-icon-tap:active {
   transform: scale(0.85);
   transition: transform 0.1s ease;
+}
+
+/* ---- Job Market Animations ---- */
+@keyframes premium-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(212,168,67,0.15), 0 4px 20px rgba(212,168,67,0.1); }
+  50%      { box-shadow: 0 0 24px rgba(212,168,67,0.3), 0 4px 24px rgba(212,168,67,0.2); }
+}
+.anim-premium-glow {
+  animation: premium-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes tab-glow {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.15); }
+}
+.anim-tab-glow {
+  animation: tab-glow 2s ease-in-out infinite;
+}
+
+@keyframes submit-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.02); }
+}
+.anim-submit-pulse {
+  animation: submit-pulse 2s ease-in-out infinite;
+}
+
+@keyframes loading-bar {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.anim-loading-bar {
+  animation: loading-bar 1.5s ease-in-out infinite;
+}
+
+@keyframes reward-float {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.8); }
+  30%  { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.anim-reward-float {
+  animation: reward-float 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ─── ActionBottomSheet v2 Animations ────────── */
+@keyframes card-select-glow {
+  0%, 100% { box-shadow: 0 0 12px var(--glow, rgba(99,102,241,0.3)); }
+  50%      { box-shadow: 0 0 24px var(--glow, rgba(99,102,241,0.5)); }
+}
+.anim-card-glow {
+  animation: card-select-glow 1.5s ease-in-out infinite;
+}
+@keyframes confirm-bounce {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  60%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+.anim-confirm-bounce {
+  animation: confirm-bounce 0.4s ease;
+}
+@keyframes confirm-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+.anim-confirm-shake {
+  animation: confirm-shake 0.4s ease;
+}
+@keyframes preview-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-preview-in {
+  animation: preview-slide-in 0.25s ease-out forwards;
 }

@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { player, homeActivities, activeCourse, toPersian } from "@/data/mock";
 
 type Activity = (typeof homeActivities)[0];
@@ -15,10 +14,10 @@ function getSuggestion(done: string[]): Activity {
 
 export default function HeroActionButton({
   done,
-  onDone,
+  onOpenAction,
 }: {
   done: string[];
-  onDone: (id: string) => void;
+  onOpenAction: (categoryId: string) => void;
 }) {
   const suggestion = getSuggestion(done);
   const isDone = done.includes(suggestion.id);
@@ -51,12 +50,10 @@ export default function HeroActionButton({
       display: "flex", justifyContent: "center",
       padding: "8px 0 12px",
     }}>
-      <Link
-        href={suggestion.href}
-        onClick={() => onDone(suggestion.id)}
-        style={{ textDecoration: "none" }}
-      >
-        <button className="anim-hero-pulse" style={{
+      <button
+        onClick={() => onOpenAction(suggestion.id)}
+        className="anim-hero-pulse"
+        style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -69,38 +66,38 @@ export default function HeroActionButton({
           fontFamily: "inherit",
           position: "relative",
           overflow: "hidden",
+        }}
+      >
+        {/* Inner shine */}
+        <div style={{
+          position: "absolute", inset: 0,
+          borderRadius: "inherit",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 50%)",
+          pointerEvents: "none",
+        }} />
+
+        <div style={{
+          fontSize: 15, fontWeight: 900, color: "white",
+          display: "flex", alignItems: "center", gap: 6,
+          textShadow: "0 0 10px rgba(99,102,241,0.4)",
         }}>
-          {/* Inner shine */}
-          <div style={{
-            position: "absolute", inset: 0,
-            borderRadius: "inherit",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 50%)",
-            pointerEvents: "none",
-          }} />
+          <span style={{ fontSize: 18 }}>{suggestion.emoji}</span>
+          {suggestion.label}
+        </div>
 
-          <div style={{
-            fontSize: 15, fontWeight: 900, color: "white",
-            display: "flex", alignItems: "center", gap: 6,
-            textShadow: "0 0 10px rgba(99,102,241,0.4)",
-          }}>
-            <span style={{ fontSize: 18 }}>{suggestion.emoji}</span>
-            {suggestion.label}
-          </div>
-
-          <div style={{
-            fontSize: 10, fontWeight: 600,
-            color: "rgba(255,255,255,0.45)",
-            display: "flex", alignItems: "center", gap: 4,
-          }}>
-            {mainReward && (
-              <span style={{ color: "#4ade80" }}>
-                {mainReward.icon} {toPersian(mainReward.label)}
-              </span>
-            )}
-            <span>· شروع کن</span>
-          </div>
-        </button>
-      </Link>
+        <div style={{
+          fontSize: 10, fontWeight: 600,
+          color: "rgba(255,255,255,0.45)",
+          display: "flex", alignItems: "center", gap: 4,
+        }}>
+          {mainReward && (
+            <span style={{ color: "#4ade80" }}>
+              {mainReward.icon} {toPersian(mainReward.label)}
+            </span>
+          )}
+          <span>· شروع کن</span>
+        </div>
+      </button>
     </div>
   );
 }

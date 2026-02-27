@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { player, activeCourse, fridgeItems, toPersian } from "@/data/mock";
 
 interface RoomObject {
@@ -7,7 +6,7 @@ interface RoomObject {
   emoji: string;
   label: string;
   getStatus: (done: string[]) => string;
-  href: string;
+  actionCategory: string;
   glowColor: string;
 }
 
@@ -17,7 +16,7 @@ const OBJECTS: RoomObject[] = [
     emoji: "🖥",
     label: "میز کار",
     getStatus: (done) => done.includes("work") ? "✅" : "شیفت",
-    href: "/jobs",
+    actionCategory: "work",
     glowColor: "rgba(212,168,67,0.3)",
   },
   {
@@ -26,7 +25,7 @@ const OBJECTS: RoomObject[] = [
     label: "قفسه کتاب",
     getStatus: () =>
       activeCourse ? `روز ${toPersian(activeCourse.currentDay)}` : "—",
-    href: "/skills",
+    actionCategory: "study",
     glowColor: "rgba(59,130,246,0.3)",
   },
   {
@@ -34,7 +33,7 @@ const OBJECTS: RoomObject[] = [
     emoji: "🍳",
     label: "آشپزخانه",
     getStatus: () => `${toPersian(fridgeItems.length)} آیتم`,
-    href: "/fridge",
+    actionCategory: "eat",
     glowColor: "rgba(249,115,22,0.3)",
   },
   {
@@ -42,7 +41,7 @@ const OBJECTS: RoomObject[] = [
     emoji: "🛏",
     label: "تخت",
     getStatus: () => `${toPersian(player.energy)}٪`,
-    href: "#",
+    actionCategory: "sleep",
     glowColor: "rgba(139,92,246,0.3)",
   },
   {
@@ -50,7 +49,7 @@ const OBJECTS: RoomObject[] = [
     emoji: "🏋️",
     label: "باشگاه",
     getStatus: (done) => done.includes("exercise") ? "✅" : "ورزش",
-    href: "#",
+    actionCategory: "exercise",
     glowColor: "rgba(34,197,94,0.3)",
   },
   {
@@ -58,12 +57,18 @@ const OBJECTS: RoomObject[] = [
     emoji: "☕",
     label: "مبل",
     getStatus: (done) => done.includes("rest") ? "✅" : "آرام",
-    href: "#",
+    actionCategory: "rest",
     glowColor: "rgba(236,72,153,0.3)",
   },
 ];
 
-export default function RoomObjects({ done }: { done: string[] }) {
+export default function RoomObjects({
+  done,
+  onOpenAction,
+}: {
+  done: string[];
+  onOpenAction: (categoryId: string) => void;
+}) {
   return (
     <div style={{
       display: "grid",
@@ -75,12 +80,12 @@ export default function RoomObjects({ done }: { done: string[] }) {
         const status = obj.getStatus(done);
 
         return (
-          <Link
+          <div
             key={obj.id}
-            href={obj.href}
             className="room-object"
+            onClick={() => onOpenAction(obj.actionCategory)}
             style={{
-              textDecoration: "none",
+              cursor: "pointer",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -115,7 +120,7 @@ export default function RoomObjects({ done }: { done: string[] }) {
             }}>
               {status}
             </div>
-          </Link>
+          </div>
         );
       })}
     </div>

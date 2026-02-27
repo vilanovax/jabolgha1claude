@@ -1,5 +1,10 @@
 "use client";
 import ProfileHero from "@/components/profile/ProfileHero";
+import ProfileXPBrand from "@/components/profile/ProfileXPBrand";
+import ProfileStats from "@/components/profile/ProfileStats";
+import ProfileLifePath from "@/components/profile/ProfileLifePath";
+import ProfileSkills from "@/components/profile/ProfileSkills";
+import ProfileRankings from "@/components/profile/ProfileRankings";
 import ProfileMissionArc from "@/components/profile/ProfileMissionArc";
 import ProfileRoom from "@/components/profile/ProfileRoom";
 import ProfileBadges from "@/components/profile/ProfileBadges";
@@ -50,6 +55,11 @@ export default function ProfilePage() {
         zIndex: 2,
       }}>
         <ProfileHero />
+        <ProfileXPBrand />
+        <ProfileStats />
+        <ProfileLifePath />
+        <ProfileSkills />
+        <ProfileRankings />
         <ProfileMissionArc />
         <ProfileRoom />
         <ProfileBadges />

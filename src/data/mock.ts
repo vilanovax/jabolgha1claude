@@ -17,6 +17,50 @@ export const player = {
 };
 
 export type MissionStatus = "pending" | "in_progress" | "done" | "claimable";
+export type JobDifficulty = "آسان" | "متوسط" | "سخت";
+export type GrowthPotential = "پایین" | "متوسط" | "بالا";
+
+export interface JobListing {
+  id: number;
+  title: string;
+  company: string;
+  type: "استارتاپ" | "شرکت" | "دولتی";
+  salaryMin: number;
+  salaryMax: number;
+  commission?: boolean;
+  isRemote: boolean;
+  requirements: { skill: string; level: number }[];
+  suitable: boolean;
+  missing?: string;
+  postedAgo: number;
+  acceptanceChance: number;
+  difficulty: JobDifficulty;
+  growthPotential: GrowthPotential;
+  energyCost: number;
+  isPremium: boolean;
+  isHot: boolean;
+}
+
+export const professionalStatus = {
+  resumeSkill: "برنامه‌نویسی",
+  resumeLevel: 6,
+  reputation: 42,
+  baseAcceptanceChance: 62,
+  experienceYears: 2,
+};
+
+export const goldenMembership = {
+  active: false,
+  remainingDays: 0,
+  price: 5_000_000,
+  durationDays: 30,
+  benefits: [
+    "شانس پذیرش +۱۰٪",
+    "دسترسی به آگهی‌های ویژه",
+    "نشان طلایی روی رزومه",
+    "دعوت مستقیم شرکت‌ها",
+  ],
+};
 
 export const storyArc = {
   id: "sa1",
@@ -196,24 +240,30 @@ export const activeCourse = {
   xpReward: 50,
 };
 
-export const jobListings = [
+export const jobListings: JobListing[] = [
   {
     id: 1,
     title: "توسعه‌دهنده پایتون",
     company: "استارتاپ نوآوران",
-    type: "استارتاپ" as const,
+    type: "استارتاپ",
     salaryMin: 45_000_000,
     salaryMax: 60_000_000,
     isRemote: true,
     requirements: [{ skill: "برنامه‌نویسی", level: 6 }],
     suitable: true,
     postedAgo: 2,
+    acceptanceChance: 72,
+    difficulty: "متوسط",
+    growthPotential: "بالا",
+    energyCost: 25,
+    isPremium: false,
+    isHot: false,
   },
   {
     id: 2,
     title: "مدرس آنلاین پایتون",
     company: "آموزشگاه فناوری",
-    type: "شرکت" as const,
+    type: "شرکت",
     salaryMin: 30_000_000,
     salaryMax: 30_000_000,
     commission: true,
@@ -225,37 +275,155 @@ export const jobListings = [
     suitable: false,
     missing: "ارتباطات Lv.4",
     postedAgo: 1,
+    acceptanceChance: 35,
+    difficulty: "آسان",
+    growthPotential: "متوسط",
+    energyCost: 15,
+    isPremium: false,
+    isHot: true,
   },
   {
     id: 3,
     title: "فرانت‌اند React",
     company: "شرکت پیشرو",
-    type: "شرکت" as const,
+    type: "شرکت",
     salaryMin: 55_000_000,
     salaryMax: 70_000_000,
     isRemote: false,
     requirements: [{ skill: "برنامه‌نویسی", level: 7 }],
     suitable: true,
     postedAgo: 3,
+    acceptanceChance: 65,
+    difficulty: "سخت",
+    growthPotential: "بالا",
+    energyCost: 30,
+    isPremium: true,
+    isHot: false,
   },
   {
     id: 4,
     title: "کارشناس IT",
     company: "سازمان دولتی",
-    type: "دولتی" as const,
+    type: "دولتی",
     salaryMin: 18_000_000,
     salaryMax: 22_000_000,
     isRemote: false,
     requirements: [{ skill: "برنامه‌نویسی", level: 3 }],
     suitable: true,
     postedAgo: 0,
+    acceptanceChance: 88,
+    difficulty: "آسان",
+    growthPotential: "پایین",
+    energyCost: 20,
+    isPremium: false,
+    isHot: false,
+  },
+  {
+    id: 5,
+    title: "مدیر فنی CTO",
+    company: "تک‌استار ونچرز",
+    type: "استارتاپ",
+    salaryMin: 120_000_000,
+    salaryMax: 150_000_000,
+    isRemote: false,
+    requirements: [
+      { skill: "برنامه‌نویسی", level: 8 },
+      { skill: "رهبری", level: 3 },
+    ],
+    suitable: false,
+    missing: "رهبری Lv.3",
+    postedAgo: 0,
+    acceptanceChance: 25,
+    difficulty: "سخت",
+    growthPotential: "بالا",
+    energyCost: 35,
+    isPremium: true,
+    isHot: true,
+  },
+  {
+    id: 6,
+    title: "تحلیلگر داده",
+    company: "دیجی‌کالا",
+    type: "شرکت",
+    salaryMin: 55_000_000,
+    salaryMax: 65_000_000,
+    isRemote: true,
+    requirements: [{ skill: "برنامه‌نویسی", level: 5 }],
+    suitable: true,
+    postedAgo: 1,
+    acceptanceChance: 60,
+    difficulty: "متوسط",
+    growthPotential: "متوسط",
+    energyCost: 20,
+    isPremium: true,
+    isHot: false,
   },
 ];
 
+export const cityEconomy = {
+  status: "پرنوسان" as "پایدار" | "پرنوسان" | "رکود" | "رونق",
+  inflationRate: 3.2,
+  activePlayers: 748,
+  totalPlayers: 1000,
+  economyHealth: 62,
+};
+
+export const economicWave = {
+  name: "موج استارتاپ",
+  emoji: "🚀",
+  description: "حقوق IT بالاست. استارتاپ‌ها استخدام می‌کنن.",
+  effects: [
+    { text: "حقوق IT +۲۰٪", positive: true },
+    { text: "رقابت استخدام بالا", positive: false },
+    { text: "فرصت سرمایه‌گذاری", positive: true },
+  ],
+  remainingDays: 5,
+  totalDays: 14,
+};
+
+export type EventSeverity = "normal" | "important" | "critical" | "golden";
+
 export const cityEvents = [
-  { id: 1, type: "economic", emoji: "💵", title: "دلار ۵٪ بالا رفت", desc: "کالاهای وارداتی گرون‌تر شد", time: "۲ ساعت پیش" },
-  { id: 2, type: "opportunity", emoji: "🔥", title: "فصل کنکور شروع شد", desc: "تقاضا برای تدریس ۳ برابر شد", time: "امروز" },
+  {
+    id: 1, type: "economic", emoji: "💵", severity: "critical" as EventSeverity,
+    title: "دلار ۵٪ بالا رفت", desc: "کالاهای وارداتی گرون‌تر شد",
+    impacts: [
+      { text: "واردات گران‌تر", positive: false },
+      { text: "سرمایه‌گذاری دلاری سودده‌تر", positive: true },
+      { text: "خرید آیفون پرریسک‌تر", positive: false },
+    ],
+    remainingHours: 48, affectedPlayers: 234,
+  },
+  {
+    id: 2, type: "opportunity", emoji: "🔥", severity: "golden" as EventSeverity,
+    title: "فصل کنکور شروع شد", desc: "تقاضا برای تدریس ۳ برابر شد",
+    impacts: [
+      { text: "درآمد تدریس ×۳", positive: true },
+      { text: "رقابت بالا بین معلم‌ها", positive: false },
+    ],
+    remainingHours: 168, affectedPlayers: 89,
+  },
+  {
+    id: 3, type: "market", emoji: "📉", severity: "important" as EventSeverity,
+    title: "رکود در صنعت IT", desc: "۳ شرکت نیروی خود را کاهش دادند",
+    impacts: [
+      { text: "حقوق IT -۱۰٪", positive: false },
+      { text: "فرصت فریلنسری بالا", positive: true },
+    ],
+    remainingHours: 72, affectedPlayers: 156,
+  },
 ];
+
+export const cityOpportunities = [
+  { id: 1, emoji: "👔", title: "کارمند می‌خوام", sub: "شرکت دیجی‌کد | Lv.6+ | ۵۵M", btn: "درخواست", totalSpots: 3, remainingSpots: 1, competitors: 27 },
+  { id: 2, emoji: "🤝", title: "شریک تجاری", sub: "سرمایه ۲۰۰M | فروشگاه آنلاین", btn: "جزئیات", totalSpots: 1, remainingSpots: 1, competitors: 8 },
+  { id: 3, emoji: "📦", title: "خرید عمده آیفون", sub: "بازرگانی نوری | ۱۵ دستگاه", btn: "مذاکره", totalSpots: 5, remainingSpots: 2, competitors: 14 },
+];
+
+export const marketInsight = {
+  text: "نشانه‌های رشد صنعت غذا دیده می‌شود. ورود در ۷ روز آینده سودآور خواهد بود.",
+  confidence: 75,
+};
 
 export const cityPlayers = [
   { rank: 1, name: "سارا محمدی", netWorth: 850_000_000, title: "کارآفرین", badge: "👑" },
@@ -595,5 +763,23 @@ export function getJobTypeColor(type: string): { bg: string; text: string } {
     case "دولتی": return { bg: "#dbeafe", text: "#1e40af" };
     case "شرکت": return { bg: "#f0fdf4", text: "#166534" };
     default: return { bg: "#f1f5f9", text: "#475569" };
+  }
+}
+
+export function getDifficultyColor(d: string): { color: string; bg: string } {
+  switch (d) {
+    case "آسان": return { color: "#166534", bg: "rgba(74,222,128,0.15)" };
+    case "متوسط": return { color: "#854d0e", bg: "rgba(250,204,21,0.15)" };
+    case "سخت": return { color: "#991b1b", bg: "rgba(239,68,68,0.15)" };
+    default: return { color: "#475569", bg: "rgba(255,255,255,0.1)" };
+  }
+}
+
+export function getGrowthColor(g: string): { color: string; bg: string } {
+  switch (g) {
+    case "بالا": return { color: "#1e40af", bg: "rgba(96,165,250,0.15)" };
+    case "متوسط": return { color: "#854d0e", bg: "rgba(250,204,21,0.15)" };
+    case "پایین": return { color: "#475569", bg: "rgba(255,255,255,0.1)" };
+    default: return { color: "#475569", bg: "rgba(255,255,255,0.1)" };
   }
 }

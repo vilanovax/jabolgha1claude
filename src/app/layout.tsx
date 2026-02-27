@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import GameTickProvider from "@/components/providers/GameTickProvider";
 
 export const metadata: Metadata = {
   title: "شهر من",
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#1B3A5C" />
       </head>
-      <body>{children}</body>
+      <body><GameTickProvider>{children}</GameTickProvider></body>
     </html>
   );
 }

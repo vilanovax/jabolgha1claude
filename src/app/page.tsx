@@ -4,14 +4,24 @@ import GameHUD from "@/components/home/GameHUD";
 import CharacterStage from "@/components/home/CharacterStage";
 import StoryBubble from "@/components/home/StoryBubble";
 import HeroActionButton from "@/components/home/HeroActionButton";
+import DailyRoutine from "@/components/home/DailyRoutine";
 import RoomObjects from "@/components/home/RoomObjects";
+import ActionBottomSheet from "@/components/home/ActionBottomSheet";
+import RoutineSlotPicker from "@/components/home/RoutineSlotPicker";
 import BottomNav from "@/components/layout/BottomNav";
+import type { RoutineState } from "@/stores/gameStore";
 
 export default function HomePage() {
   const [done, setDone] = useState<string[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [pickerSlot, setPickerSlot] = useState<keyof RoutineState | null>(null);
 
   const handleDone = (id: string) => {
     setDone((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const handleOpenAction = (categoryId: string) => {
+    setActiveCategory(categoryId);
   };
 
   return (
@@ -65,9 +75,26 @@ export default function HomePage() {
       }}>
         <CharacterStage doneCount={done.length} />
         <StoryBubble />
-        <HeroActionButton done={done} onDone={handleDone} />
-        <RoomObjects done={done} />
+        <HeroActionButton done={done} onOpenAction={handleOpenAction} />
+        <DailyRoutine
+          onOpenAction={handleOpenAction}
+          onOpenSlotPicker={(slot) => setPickerSlot(slot)}
+        />
+        <RoomObjects done={done} onOpenAction={handleOpenAction} />
       </div>
+
+      {/* Action Bottom Sheet */}
+      <ActionBottomSheet
+        categoryId={activeCategory}
+        onClose={() => setActiveCategory(null)}
+        onDone={handleDone}
+      />
+
+      {/* Routine Slot Picker */}
+      <RoutineSlotPicker
+        slot={pickerSlot}
+        onClose={() => setPickerSlot(null)}
+      />
 
       <BottomNav />
     </div>
