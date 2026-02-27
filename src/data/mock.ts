@@ -4,6 +4,7 @@ export const player = {
   city: "تهران",
   avatar: "👨‍💻",
   energy: 68,
+  hunger: 55,
   happiness: 72,
   security: 58,
   money: 12_500_000,
@@ -174,6 +175,286 @@ export const dailySummary = {
     { emoji: "📈", text: "فصل کنکور شروع شد - فرصت تدریس" },
   ],
 };
+
+export const finance = {
+  monthlyIncome: 45_000_000,
+  monthlyExpenses: 13_200_000,
+  cashflow: 31_800_000,
+  rank: 47,
+  totalPlayers: 748,
+};
+
+export const company = {
+  hasCompany: false,
+  employees: 0,
+  productivity: 0,
+  revenue: 0,
+};
+
+export const vitals = [
+  {
+    id: "happiness",
+    label: "خوشحالی",
+    emoji: "😊",
+    value: 72,
+    level: 3,
+    unit: "٪",
+    colorFrom: "#a855f7",
+    colorTo: "#c084fc",
+    effects: ["بهره‌وری کاری بیشتر", "روابط قوی‌تر", "سلامت روانی"],
+    boosts: ["تفریح و سرگرمی", "ارتباط اجتماعی", "موفقیت مالی"],
+    risks: ["استرس زیاد", "انزوای اجتماعی", "شکست‌های پی‌در‌پی"],
+  },
+  {
+    id: "health",
+    label: "سلامت",
+    emoji: "❤️",
+    value: 84,
+    level: 4,
+    unit: "٪",
+    colorFrom: "#22c55e",
+    colorTo: "#4ade80",
+    effects: ["انرژی بیشتر", "تمرکز بهتر", "کارایی بالاتر"],
+    boosts: ["غذای سالم", "ورزش منظم", "خواب کافی"],
+    risks: ["فست فود زیاد", "بی‌خوابی", "استرس مزمن"],
+  },
+  {
+    id: "intelligence",
+    label: "هوش",
+    emoji: "🧠",
+    value: 63,
+    level: 2,
+    unit: "٪",
+    colorFrom: "#3b82f6",
+    colorTo: "#60a5fa",
+    effects: ["فرصت‌های شغلی بهتر", "درک مسائل پیچیده", "سرمایه‌گذاری هوشمند"],
+    boosts: ["مطالعه روزانه", "دوره‌های آموزشی", "حل مسئله"],
+    risks: ["کم‌خوابی مزمن", "اطلاعات بیش از حد", "استرس"],
+  },
+  {
+    id: "workXp",
+    label: "تجربه کاری",
+    emoji: "💼",
+    value: 41,
+    level: 1,
+    unit: "٪",
+    colorFrom: "#f97316",
+    colorTo: "#fb923c",
+    effects: ["حقوق بالاتر", "پیشرفت سریع‌تر", "اعتبار بیشتر"],
+    boosts: ["کار روزانه", "پروژه‌های جانبی", "مشاوره با متخصص"],
+    risks: ["غیبت از کار", "شکست پروژه‌ها", "تغییر ناگهانی حوزه"],
+  },
+  {
+    id: "fitness",
+    label: "تناسب اندام",
+    emoji: "⚖️",
+    value: 65,
+    level: 2,
+    unit: "٪",
+    colorFrom: "#64748b",
+    colorTo: "#94a3b8",
+    effects: ["سلامت بهتر", "اعتماد به نفس", "انرژی بیشتر"],
+    boosts: ["ورزش منظم", "تغذیه متعادل", "آب کافی"],
+    risks: ["کم‌تحرکی", "فست فود زیاد", "پرخوری"],
+  },
+  {
+    id: "wealth",
+    label: "ثروت",
+    emoji: "💰",
+    value: 31,
+    level: 1,
+    unit: "٪",
+    colorFrom: "#D4A843",
+    colorTo: "#F0C966",
+    effects: ["آزادی مالی", "مسکن بهتر", "فرصت سرمایه‌گذاری"],
+    boosts: ["کار بیشتر", "سرمایه‌گذاری هوشمند", "پس‌انداز"],
+    risks: ["هزینه‌های اضافه", "وام بیش از حد", "تورم"],
+  },
+];
+
+export const actionCards = [
+  {
+    id: "work", emoji: "💼", label: "کار", sublabel: "دیجی‌کد", href: "/jobs",
+    color: "#f97316", bgColor: "#fff7ed", borderColor: "#fed7aa",
+    effects: [
+      { label: "تجربه", delta: "+3", positive: true },
+      { label: "ثروت", delta: "+2", positive: true },
+      { label: "انرژی", delta: "-2", positive: false },
+    ],
+  },
+  {
+    id: "study", emoji: "📚", label: "مطالعه", sublabel: "پایتون", href: "/skills",
+    color: "#3b82f6", bgColor: "#eff6ff", borderColor: "#bfdbfe",
+    effects: [
+      { label: "هوش", delta: "+3", positive: true },
+      { label: "تجربه", delta: "+1", positive: true },
+      { label: "انرژی", delta: "-2", positive: false },
+    ],
+  },
+  {
+    id: "exercise", emoji: "🏋️", label: "ورزش", sublabel: "باشگاه", href: "#",
+    color: "#22c55e", bgColor: "#f0fdf4", borderColor: "#bbf7d0",
+    effects: [
+      { label: "سلامت", delta: "+4", positive: true },
+      { label: "تناسب", delta: "+3", positive: true },
+      { label: "انرژی", delta: "-3", positive: false },
+    ],
+  },
+  {
+    id: "rest", emoji: "😴", label: "استراحت", sublabel: "بازیابی", href: "#",
+    color: "#8b5cf6", bgColor: "#f5f3ff", borderColor: "#ddd6fe",
+    effects: [
+      { label: "انرژی", delta: "+5", positive: true },
+      { label: "خوشحالی", delta: "+2", positive: true },
+      { label: "وقت", delta: "-3", positive: false },
+    ],
+  },
+  {
+    id: "invest", emoji: "📈", label: "سرمایه‌گذاری", sublabel: "بورس", href: "/bank",
+    color: "#D4A843", bgColor: "#fffbeb", borderColor: "#fde68a",
+    effects: [
+      { label: "ثروت", delta: "+؟", positive: true },
+      { label: "هوش", delta: "+1", positive: true },
+      { label: "استرس", delta: "+2", positive: false },
+    ],
+  },
+  {
+    id: "social", emoji: "🤝", label: "شبکه‌سازی", sublabel: "رویدادها", href: "/city",
+    color: "#ec4899", bgColor: "#fdf2f8", borderColor: "#fbcfe8",
+    effects: [
+      { label: "خوشحالی", delta: "+3", positive: true },
+      { label: "فرصت‌ها", delta: "+2", positive: true },
+      { label: "زمان", delta: "-2", positive: false },
+    ],
+  },
+];
+
+export const homeActivities = [
+  {
+    id: "study",
+    emoji: "📚",
+    label: "مطالعه پایتون",
+    sublabel: "دوره ۷ روزه · روز ۴ از ۷",
+    iconBg: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
+    iconGlow: "rgba(59,130,246,0.35)",
+    href: "/skills",
+    costs: [
+      { icon: "⏱️", label: "۱۵ دقیقه" },
+      { icon: "⚡", label: "-۲۰ انرژی" },
+    ],
+    rewards: [
+      { icon: "🧠", label: "+۱۵ هوش" },
+      { icon: "⭐", label: "+۵ XP" },
+    ],
+    available: true,
+  },
+  {
+    id: "eat",
+    emoji: "🍳",
+    label: "غذا بخور",
+    sublabel: "یخچال: ۴ آیتم آماده",
+    iconBg: "linear-gradient(135deg, #c2410c, #f97316)",
+    iconGlow: "rgba(249,115,22,0.35)",
+    href: "/fridge",
+    costs: [
+      { icon: "⏱️", label: "۵ دقیقه" },
+    ],
+    rewards: [
+      { icon: "🍔", label: "+۴۰ سیری" },
+      { icon: "⚡", label: "+۵۰ انرژی" },
+    ],
+    available: true,
+  },
+  {
+    id: "sleep",
+    emoji: "😴",
+    label: "بخواب",
+    sublabel: "ریکاوری کامل انرژی",
+    iconBg: "linear-gradient(135deg, #6d28d9, #8b5cf6)",
+    iconGlow: "rgba(139,92,246,0.35)",
+    href: "#",
+    costs: [
+      { icon: "⏱️", label: "۸ ساعت" },
+    ],
+    rewards: [
+      { icon: "⚡", label: "+۶۰ انرژی" },
+      { icon: "😊", label: "+۱۰ خوشحالی" },
+    ],
+    available: true,
+  },
+  {
+    id: "exercise",
+    emoji: "🏋️",
+    label: "ورزش کن",
+    sublabel: "باشگاه · ارتقاء سلامت",
+    iconBg: "linear-gradient(135deg, #15803d, #22c55e)",
+    iconGlow: "rgba(34,197,94,0.35)",
+    href: "#",
+    costs: [
+      { icon: "⏱️", label: "۱ ساعت" },
+      { icon: "⚡", label: "-۳۰ انرژی" },
+      { icon: "💰", label: "-۱۰۰K" },
+    ],
+    rewards: [
+      { icon: "❤️", label: "+۲۰ سلامت" },
+      { icon: "⚖️", label: "+۵ تناسب" },
+    ],
+    available: true,
+  },
+  {
+    id: "rest",
+    emoji: "☕",
+    label: "استراحت کن",
+    sublabel: "مبل · آرامش کوتاه",
+    iconBg: "linear-gradient(135deg, #7c3aed, #a855f7)",
+    iconGlow: "rgba(168,85,247,0.35)",
+    href: "#",
+    costs: [
+      { icon: "⏱️", label: "۳۰ دقیقه" },
+    ],
+    rewards: [
+      { icon: "⚡", label: "+۱۵ انرژی" },
+      { icon: "😊", label: "+۵ خوشحالی" },
+    ],
+    available: true,
+  },
+  {
+    id: "work",
+    emoji: "💻",
+    label: "کار کن",
+    sublabel: "دیجی‌کد · ۸ ساعت",
+    iconBg: "linear-gradient(135deg, #b45309, #D4A843)",
+    iconGlow: "rgba(212,168,67,0.35)",
+    href: "/jobs",
+    costs: [
+      { icon: "⏱️", label: "۸ ساعت" },
+      { icon: "⚡", label: "-۴۰ انرژی" },
+    ],
+    rewards: [
+      { icon: "💰", label: "+۴۵M" },
+      { icon: "💼", label: "+۳ تجربه" },
+    ],
+    available: true,
+  },
+  {
+    id: "invest",
+    emoji: "📈",
+    label: "سرمایه‌گذاری",
+    sublabel: "بورس · ریسک متوسط",
+    iconBg: "linear-gradient(135deg, #0f766e, #14b8a6)",
+    iconGlow: "rgba(20,184,166,0.35)",
+    href: "/bank",
+    costs: [
+      { icon: "💰", label: "-۵M تومن" },
+      { icon: "⏱️", label: "۱۵ دقیقه" },
+    ],
+    rewards: [
+      { icon: "💰", label: "+۱-۳M" },
+      { icon: "🧠", label: "+۲ هوش" },
+    ],
+    available: true,
+  },
+];
 
 // Helpers
 export function formatMoney(n: number): string {
