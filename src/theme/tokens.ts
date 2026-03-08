@@ -139,7 +139,7 @@ export const sponsoredCardStyle: CSSProperties = {
 };
 
 /** Icon container (circle/rounded) */
-export const iconBoxStyle = (size = icon.md): CSSProperties => ({
+export const iconBoxStyle = (size: number = icon.md): CSSProperties => ({
   width: size,
   height: size,
   borderRadius: radius.lg,
