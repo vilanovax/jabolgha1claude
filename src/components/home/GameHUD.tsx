@@ -1,9 +1,12 @@
 "use client";
 import { useGameStore } from "@/stores/gameStore";
 import { formatMoney, toPersian } from "@/data/mock";
-import TimeBar from "./TimeBar";
 
-export default function GameHUD() {
+interface Props {
+  onEndDay: () => void;
+}
+
+export default function GameHUD({ onEndDay }: Props) {
   const player = useGameStore((s) => s.player);
   const bank = useGameStore((s) => s.bank);
 
@@ -36,16 +39,30 @@ export default function GameHUD() {
         border: "1px solid rgba(255,255,255,0.08)",
         pointerEvents: "auto",
       }}>
-        {/* Row 1: Day + Level */}
+        {/* Row 1: Day + Level + End Day button */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          marginBottom: 6,
+          marginBottom: 8,
         }}>
           <span style={{
             fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)",
           }}>
             روز {toPersian(player.dayInGame)}
           </span>
+          <button
+            onClick={onEndDay}
+            style={{
+              fontSize: 9, fontWeight: 800,
+              padding: "3px 10px", borderRadius: 10,
+              background: "rgba(99,102,241,0.12)",
+              color: "#818cf8",
+              border: "1px solid rgba(99,102,241,0.2)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            پایان روز 🌙
+          </button>
           <span style={{
             fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)",
           }}>
@@ -53,12 +70,7 @@ export default function GameHUD() {
           </span>
         </div>
 
-        {/* Row 2: TimeBar */}
-        <div style={{ marginBottom: 8 }}>
-          <TimeBar />
-        </div>
-
-        {/* Row 3: Stat icons */}
+        {/* Row 2: Stat icons */}
         <div style={{
           display: "flex", justifyContent: "space-between", gap: 2,
         }}>

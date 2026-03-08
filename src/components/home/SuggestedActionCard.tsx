@@ -6,13 +6,9 @@ type Activity = (typeof homeActivities)[0];
 
 /** Pick the best suggestion based on player state */
 function getSuggestion(done: string[]): Activity {
-  // 1. Hungry → eat
-  if (player.hunger < 30) {
-    return homeActivities.find((a) => a.id === "eat")!;
-  }
-  // 2. Low energy → sleep
+  // 1. Low energy → rest
   if (player.energy < 30) {
-    return homeActivities.find((a) => a.id === "sleep")!;
+    return homeActivities.find((a) => a.id === "rest")!;
   }
   // 3. Active course with sessions left → study
   if (activeCourse.completedToday < activeCourse.sessionsPerDay && !done.includes("study")) {

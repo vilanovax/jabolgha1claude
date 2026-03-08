@@ -10,31 +10,34 @@ import PremiumJobCard from "@/components/jobs/PremiumJobCard";
 import ApplicationModal from "@/components/jobs/ApplicationModal";
 import type { ApplicationResult } from "@/components/jobs/ApplicationModal";
 import { jobListings, toPersian } from "@/data/mock";
-import type { JobListing } from "@/data/mock";
+import type { JobListing, SeniorityLevel } from "@/data/mock";
+import { useGameStore } from "@/stores/gameStore";
 
-type TabKey = "suitable" | "hot" | "premium" | "all";
+type TabKey = "all" | "hot" | "premium";
 
 export default function JobsPage() {
-  const [tab, setTab] = useState<TabKey>("suitable");
+  const [tab, setTab] = useState<TabKey>("all");
   const [applied, setApplied] = useState<number[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalPhase, setModalPhase] = useState<"loading" | "result">("loading");
   const [modalResult, setModalResult] = useState<ApplicationResult | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobListing | null>(null);
 
-  const suitable = jobListings.filter((j) => j.suitable);
+  const player = useGameStore((s) => s.player);
+  const completedCourses = useGameStore((s) => s.completedCourses);
+  const skills = useGameStore((s) => s.skills);
+  const allSkills = [...skills.hard, ...skills.soft];
+
   const hot = jobListings.filter((j) => j.isHot);
   const premium = jobListings.filter((j) => j.isPremium);
   const counts = {
-    suitable: suitable.length,
+    all: jobListings.length,
     hot: hot.length,
     premium: premium.length,
-    all: jobListings.length,
   };
 
   let items: JobListing[];
   switch (tab) {
-    case "suitable": items = suitable; break;
     case "hot": items = hot; break;
     case "premium": items = premium; break;
     default: items = jobListings;
@@ -43,7 +46,7 @@ export default function JobsPage() {
   const premiumItems = items.filter((j) => j.isPremium);
   const regularItems = items.filter((j) => !j.isPremium);
 
-  function handleApply(jobId: number) {
+  function handleApply(jobId: number, seniority: SeniorityLevel) {
     const job = jobListings.find((j) => j.id === jobId);
     if (!job || applied.includes(jobId)) return;
 
@@ -54,21 +57,24 @@ export default function JobsPage() {
 
     setTimeout(() => {
       const roll = Math.random() * 100;
-      const accepted = roll <= job.acceptanceChance;
+      // Acceptance chance based on how well player meets requirements
+      const xpRatio = Math.min(1, player.xp / seniority.minXp);
+      const baseChance = 40 + xpRatio * 40; // 40% to 80%
+      const accepted = roll <= baseChance;
 
       const result: ApplicationResult = accepted
         ? {
             accepted: true,
             xpGain: 50 + Math.floor(Math.random() * 30),
-            moneyGain: job.salaryMin,
+            moneyGain: seniority.salary,
             reputationGain: 3 + Math.floor(Math.random() * 5),
           }
         : {
             accepted: false,
             rejectReason:
-              job.acceptanceChance < 40
+              baseChance < 50
                 ? "سطح مهارت شما کافی نیست. دوره‌های بیشتری بگذرونید."
-                : job.acceptanceChance < 60
+                : baseChance < 65
                   ? "رقابت زیاد بود. شهرت حرفه‌ای بیشتری نیاز دارید."
                   : "یک کاندیدای قوی‌تر انتخاب شد. دوباره تلاش کنید!",
           };
@@ -116,7 +122,7 @@ export default function JobsPage() {
             color: "#16a34a", border: "1px solid #bbf7d0",
             boxShadow: "0 2px 8px rgba(34,197,94,0.15)",
           }}>
-            {toPersian(suitable.length)} آگهی مناسب
+            {toPersian(jobListings.length)} آگهی
           </div>
         </div>
 
@@ -138,6 +144,9 @@ export default function JobsPage() {
                 job={job}
                 isApplied={applied.includes(job.id)}
                 onApply={handleApply}
+                playerXp={player.xp}
+                completedCourses={completedCourses}
+                playerSkills={allSkills}
               />
             ))}
           </div>
@@ -150,6 +159,9 @@ export default function JobsPage() {
             job={job}
             isApplied={applied.includes(job.id)}
             onApply={handleApply}
+            playerXp={player.xp}
+            completedCourses={completedCourses}
+            playerSkills={allSkills}
           />
         ))}
 

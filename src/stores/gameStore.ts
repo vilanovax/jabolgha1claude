@@ -11,7 +11,35 @@ import {
   cityPlayers as seedPlayers,
   cityOpportunities as seedOpportunities,
   marketInsight as seedInsight,
+  completedCourses as seedCompletedCourses,
 } from "@/data/mock";
+
+import { LOAN_TYPES, calculateMonthlyPayment } from "@/data/loanTypes";
+import type { ActiveLoan } from "@/data/loanTypes";
+import { drawRandomCard } from "@/data/dailyCards";
+import type { DailyCard } from "@/data/dailyCards";
+import { COURSE_CATALOG } from "@/data/mock";
+
+export interface ActiveCourseState {
+  courseId: string;
+  isSponsored: boolean;       // enrolled in sponsored variant
+  currentDay: number;         // 1-based
+  sessionsCompletedToday: number;
+  startedOnDay: number;       // player.dayInGame when enrolled
+}
+
+export interface CourseEnrollResult {
+  success: boolean;
+  reason?: string;
+}
+
+export interface SessionResult {
+  success: boolean;
+  reason?: string;
+  xpGained?: number;
+  energyCost?: number;
+  courseCompleted?: boolean;
+}
 
 import type {
   EconomicIndicators,
@@ -37,39 +65,9 @@ export interface ActionResult {
   effects: ActionEffect[];
   riskTriggered?: { label: string };
   insufficientReason?: string;
+  wasSponsored?: boolean;
+  brandName?: string;
 }
-
-export interface RoutineState {
-  morning: string | null;
-  noon: string | null;
-  evening: string | null;
-  night: string | null;
-}
-
-type RoutineSlot = keyof RoutineState;
-
-export type DayPhase = "morning" | "noon" | "evening" | "night";
-
-export function minutesToPhase(m: number): DayPhase {
-  if (m < 240) return "morning";
-  if (m < 480) return "noon";
-  if (m < 720) return "evening";
-  return "night";
-}
-
-export function minutesToClock(m: number): string {
-  const real = 7 * 60 + m; // offset to 07:00
-  const h = Math.floor(real / 60);
-  const min = real % 60;
-  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-}
-
-const PHASE_LABELS: Record<DayPhase, string> = {
-  morning: "صبح",
-  noon: "ظهر",
-  evening: "عصر",
-  night: "شب",
-};
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -138,27 +136,34 @@ interface GameState {
 
   // Action engine state
   actionsCompletedToday: string[];   // category IDs done today
-  routine: RoutineState;
-  routineStreak: number;
-  routineCompletedToday: string[];   // slot names completed today
 
-  // Time system state
-  currentMinutes: number;            // 0–960 (16 waking hours)
-  isEndOfDay: boolean;
+  // Course / education state
+  completedCourses: string[];        // IDs of completed courses
+  activeCourse: ActiveCourseState | null;
+
+  // Daily card state
+  todayCard: DailyCard | null;
+  cardHistory: { dayInGame: number; cardId: string }[];
+  cardShielded: boolean;             // was savings shield active for today's card?
 
   // Actions
   tick: () => void;
   setRunning: (v: boolean) => void;
   resetGame: () => void;
-  executeAction: (categoryId: string, optionIndex: number) => ActionResult;
-  setRoutineSlot: (slot: RoutineSlot, categoryId: string | null) => void;
-  completeRoutineSlot: (slot: RoutineSlot) => void;
-  advanceTime: (minutes: number) => void;
-  forceEndOfDay: () => void;
+  executeAction: (categoryId: string, optionIndex: number, useSponsored?: boolean) => ActionResult;
+  completeCourse: (courseId: string) => void;
+  // Education
+  enrollCourse: (courseId: string, useSponsored: boolean) => CourseEnrollResult;
+  completeSession: () => SessionResult;
+  dropCourse: () => void;
+  isJobEligible: (jobId: number, seniority: "junior" | "mid" | "senior") => { eligible: boolean; missingXp: boolean; missingCourses: string[]; missingSkills: string[] };
+  // Banking
+  depositToSavings: (amount: number) => { success: boolean; reason?: string };
+  withdrawFromSavings: (amount: number) => { success: boolean; reason?: string };
+  takeLoan: (loanTypeId: string) => { success: boolean; reason?: string };
+  payLoanInstallment: (loanId: string) => { success: boolean; reason?: string };
+  // Day transition
   startNextDay: () => void;
-  getPhase: () => DayPhase;
-  getTimeLabel: () => string;
-  getDayProgress: () => number;
 }
 
 export const useGameStore = create<GameState>()(
@@ -186,30 +191,17 @@ export const useGameStore = create<GameState>()(
 
       // Action engine initial state
       actionsCompletedToday: [],
-      routine: { morning: null, noon: null, evening: null, night: null },
-      routineStreak: 0,
-      routineCompletedToday: [],
 
-      // Time system initial state
-      currentMinutes: 0,
-      isEndOfDay: false,
+      // Course / education initial state
+      completedCourses: [...seedCompletedCourses],
+      activeCourse: null,
+
+      // Daily card initial state
+      todayCard: null,
+      cardHistory: [],
+      cardShielded: false,
 
       setRunning: (v) => set({ isRunning: v }),
-
-      advanceTime: (minutes) => {
-        set((state) => {
-          if (state.isEndOfDay) return {};
-          const newMinutes = Math.min(960, state.currentMinutes + minutes);
-          return {
-            currentMinutes: newMinutes,
-            isEndOfDay: newMinutes >= 960,
-          };
-        });
-      },
-
-      forceEndOfDay: () => {
-        set({ currentMinutes: 960, isEndOfDay: true });
-      },
 
       startNextDay: () => {
         set((state) => {
@@ -219,43 +211,127 @@ export const useGameStore = create<GameState>()(
           const missingEnergy = 100 - newPlayer.energy;
           newPlayer.energy = Math.min(100, newPlayer.energy + Math.round(missingEnergy * 0.3));
 
+          // ─── Banking: daily savings interest ───
+          const newBank = { ...state.bank };
+          const dailyInterest = Math.round(newBank.savings * (newBank.savingsInterestRate / 100));
+          newBank.savings += dailyInterest;
+          newBank.totalInterestEarned += dailyInterest;
+
+          // ─── Banking: auto-pay loan installments ───
+          const updatedLoans: ActiveLoan[] = [];
+          for (const loan of newBank.loans) {
+            if (newPlayer.dayInGame >= loan.nextPaymentDay) {
+              if (newBank.checking >= loan.monthlyPayment) {
+                newBank.checking -= loan.monthlyPayment;
+                const newRemaining = loan.remainingInstallments - 1;
+                if (newRemaining > 0) {
+                  updatedLoans.push({
+                    ...loan,
+                    remainingInstallments: newRemaining,
+                    remainingPrincipal: Math.max(0, loan.remainingPrincipal - Math.round(loan.monthlyPayment * (1 - loan.interestRate / 100))),
+                    nextPaymentDay: loan.nextPaymentDay + 30,
+                  });
+                }
+                // if newRemaining === 0, loan is paid off — don't add it back
+              } else {
+                // Late payment: penalty
+                updatedLoans.push({
+                  ...loan,
+                  latePayments: loan.latePayments + 1,
+                  nextPaymentDay: loan.nextPaymentDay + 30,
+                });
+                newPlayer.happiness = Math.max(0, newPlayer.happiness - 10);
+              }
+            } else {
+              updatedLoans.push(loan);
+            }
+          }
+          newBank.loans = updatedLoans;
+
+          // ─── Daily card draw ───
+          const card = drawRandomCard();
+          let shielded = false;
+
+          for (const effect of card.effects) {
+            let value = effect.value;
+
+            // Savings shield: reduce monetary loss by 70% if player has savings
+            if (card.savingsShield && effect.target === "checking" && value < 0 && newBank.savings > 0) {
+              value = Math.round(value * 0.3); // only 30% of damage gets through
+              shielded = true;
+            }
+
+            if (effect.target === "checking") {
+              if (card.checkingOnly) {
+                newBank.checking = Math.max(0, newBank.checking + value);
+              } else {
+                newBank.checking = Math.max(0, newBank.checking + value);
+              }
+            } else if (effect.target in newPlayer) {
+              (newPlayer as Record<string, unknown>)[effect.target] = Math.max(
+                0,
+                ((newPlayer as Record<string, unknown>)[effect.target] as number) + value,
+              );
+            }
+          }
+
+          // ─── Course: advance day & reset sessions ───
+          let newActiveCourse = state.activeCourse;
+          if (newActiveCourse) {
+            const courseDef = COURSE_CATALOG.find((c) => c.id === newActiveCourse!.courseId);
+            if (courseDef) {
+              const nextDay = newActiveCourse.currentDay + 1;
+              if (nextDay > courseDef.totalDays) {
+                // Course completed! (handled via completeSession, but safety net)
+                newActiveCourse = null;
+              } else {
+                newActiveCourse = {
+                  ...newActiveCourse,
+                  currentDay: nextDay,
+                  sessionsCompletedToday: 0,
+                };
+              }
+            }
+          }
+
           return {
             player: newPlayer,
-            currentMinutes: 0,
-            isEndOfDay: false,
+            bank: newBank,
+            todayCard: card,
+            cardShielded: shielded,
+            cardHistory: [...state.cardHistory, { dayInGame: newPlayer.dayInGame, cardId: card.id }],
             actionsCompletedToday: [],
-            routineCompletedToday: [],
+            activeCourse: newActiveCourse,
           };
         });
       },
 
-      getPhase: () => minutesToPhase(get().currentMinutes),
-
-      getTimeLabel: () => {
-        const m = get().currentMinutes;
-        const phase = minutesToPhase(m);
-        const clock = minutesToClock(m);
-        return `${PHASE_LABELS[phase]} – ${toPersian(clock)}`;
-      },
-
-      getDayProgress: () => get().currentMinutes / 960,
-
-      executeAction: (categoryId, optionIndex) => {
+      executeAction: (categoryId, optionIndex, useSponsored = false) => {
         const category = ACTION_CATEGORIES.find((c) => c.id === categoryId);
         if (!category) return { success: false, effects: [], insufficientReason: "دسته‌بندی نامعتبر" };
 
-        const option = category.options[optionIndex];
-        if (!option) return { success: false, effects: [], insufficientReason: "گزینه نامعتبر" };
+        const baseOption = category.options[optionIndex];
+        if (!baseOption) return { success: false, effects: [], insufficientReason: "گزینه نامعتبر" };
+
+        // Resolve sponsored variant
+        const sponsored = useSponsored ? baseOption.sponsoredVariant : undefined;
+        if (useSponsored && !sponsored) {
+          return { success: false, effects: [], insufficientReason: "نسخه اسپانسری موجود نیست" };
+        }
+
+        const activeCosts = sponsored ? sponsored.costs : baseOption.costs;
+        const activeEffects = sponsored ? sponsored.effects : baseOption.effects;
+        const activeRisk = sponsored ? (sponsored.risk !== undefined ? sponsored.risk : baseOption.risk) : baseOption.risk;
 
         const state = get();
 
         // Check energy
-        if (option.costs.energy && state.player.energy < option.costs.energy) {
+        if (activeCosts.energy && state.player.energy < activeCosts.energy) {
           return { success: false, effects: [], insufficientReason: "انرژی کافی نیست! ⚡" };
         }
 
         // Check money
-        if (option.costs.money && state.bank.checking < option.costs.money) {
+        if (activeCosts.money && state.bank.checking < activeCosts.money) {
           return { success: false, effects: [], insufficientReason: "موجودی کافی نیست! 💰" };
         }
 
@@ -269,16 +345,16 @@ export const useGameStore = create<GameState>()(
         const newPlayer = { ...state.player };
         const newBank = { ...state.bank };
 
-        if (option.costs.energy) {
-          newPlayer.energy = Math.max(0, newPlayer.energy - Math.round(option.costs.energy * costMult));
+        if (activeCosts.energy) {
+          newPlayer.energy = Math.max(0, newPlayer.energy - Math.round(activeCosts.energy * costMult));
         }
-        if (option.costs.money) {
-          newBank.checking = Math.max(0, newBank.checking - Math.round(option.costs.money * costMult));
+        if (activeCosts.money) {
+          newBank.checking = Math.max(0, newBank.checking - Math.round(activeCosts.money * costMult));
         }
 
         // Apply effects with wave multiplier
         const appliedEffects: ActionEffect[] = [];
-        for (const effect of option.effects) {
+        for (const effect of activeEffects) {
           const value = Math.round(effect.value * effectMult);
           appliedEffects.push({ ...effect, value });
 
@@ -294,10 +370,10 @@ export const useGameStore = create<GameState>()(
 
         // Roll risk
         let riskTriggered: { label: string } | undefined;
-        if (option.risk && Math.random() < option.risk.chance) {
-          riskTriggered = { label: option.risk.label };
-          const rk = option.risk.penalty.key;
-          const rv = option.risk.penalty.value;
+        if (activeRisk && Math.random() < activeRisk.chance) {
+          riskTriggered = { label: activeRisk.label };
+          const rk = activeRisk.penalty.key;
+          const rv = activeRisk.penalty.value;
           if (rk === "money") {
             newBank.checking = Math.max(0, newBank.checking + rv);
           } else if (rk in newPlayer) {
@@ -315,36 +391,239 @@ export const useGameStore = create<GameState>()(
 
         set({ player: newPlayer, bank: newBank, actionsCompletedToday });
 
-        return { success: true, effects: appliedEffects, riskTriggered };
+        return {
+          success: true,
+          effects: appliedEffects,
+          riskTriggered,
+          wasSponsored: useSponsored,
+          brandName: sponsored?.brandName,
+        };
       },
 
-      setRoutineSlot: (slot, categoryId) => {
-        set((state) => ({
-          routine: { ...state.routine, [slot]: categoryId },
-        }));
-      },
-
-      completeRoutineSlot: (slot) => {
+      completeCourse: (courseId) => {
         set((state) => {
-          if (state.routineCompletedToday.includes(slot)) return {};
-          const completed = [...state.routineCompletedToday, slot];
-
-          // Check if all 4 slots completed for combo bonus
-          const allDone = completed.length === 4;
-          let newPlayer = state.player;
-          let newStreak = state.routineStreak;
-          if (allDone) {
-            newPlayer = { ...state.player, xp: state.player.xp + 5 };
-            newStreak = state.routineStreak + 1;
-          }
-
-          return {
-            routineCompletedToday: completed,
-            routineStreak: newStreak,
-            player: newPlayer,
-          };
+          if (state.completedCourses.includes(courseId)) return {};
+          return { completedCourses: [...state.completedCourses, courseId] };
         });
       },
+
+      enrollCourse: (courseId, useSponsored) => {
+        const state = get();
+        if (state.activeCourse) return { success: false, reason: "قبلاً در یک دوره ثبت‌نام کردی" };
+        if (state.completedCourses.includes(courseId)) return { success: false, reason: "این دوره رو قبلاً گذروندی" };
+
+        const courseDef = COURSE_CATALOG.find((c) => c.id === courseId);
+        if (!courseDef) return { success: false, reason: "دوره نامعتبر" };
+
+        if (useSponsored && !courseDef.sponsoredVariant) {
+          return { success: false, reason: "نسخه اسپانسری موجود نیست" };
+        }
+
+        const cost = useSponsored && courseDef.sponsoredVariant ? courseDef.sponsoredVariant.cost : courseDef.cost;
+        if (state.bank.checking < cost) return { success: false, reason: "موجودی کافی نیست" };
+
+        set({
+          bank: { ...state.bank, checking: state.bank.checking - cost },
+          activeCourse: {
+            courseId,
+            isSponsored: useSponsored,
+            currentDay: 1,
+            sessionsCompletedToday: 0,
+            startedOnDay: state.player.dayInGame,
+          },
+        });
+        return { success: true };
+      },
+
+      completeSession: () => {
+        const state = get();
+        const ac = state.activeCourse;
+        if (!ac) return { success: false, reason: "دوره فعالی نداری" };
+
+        const courseDef = COURSE_CATALOG.find((c) => c.id === ac.courseId);
+        if (!courseDef) return { success: false, reason: "دوره نامعتبر" };
+
+        const sponsored = ac.isSponsored ? courseDef.sponsoredVariant : undefined;
+        const sessionsPerDay = courseDef.sessionsPerDay;
+
+        if (ac.sessionsCompletedToday >= sessionsPerDay) {
+          return { success: false, reason: "session‌های امروز تکمیل شده!" };
+        }
+
+        const energyCost = sponsored ? sponsored.energyCostPerSession : courseDef.energyCostPerSession;
+        if (state.player.energy < energyCost) {
+          return { success: false, reason: "انرژی کافی نیست! ⚡" };
+        }
+
+        const newPlayer = { ...state.player };
+        newPlayer.energy = Math.max(0, newPlayer.energy - energyCost);
+
+        // XP per session = total XP / (totalDays * sessionsPerDay)
+        const totalXp = sponsored ? sponsored.xpReward : courseDef.xpReward;
+        const totalSessions = courseDef.totalDays * sessionsPerDay;
+        const xpPerSession = Math.round(totalXp / totalSessions);
+        newPlayer.xp += xpPerSession;
+
+        const newSessionsCompleted = ac.sessionsCompletedToday + 1;
+        const isLastDay = ac.currentDay >= courseDef.totalDays;
+        const allSessionsDone = newSessionsCompleted >= sessionsPerDay;
+        const courseCompleted = isLastDay && allSessionsDone;
+
+        let newActiveCourse: ActiveCourseState | null = {
+          ...ac,
+          sessionsCompletedToday: newSessionsCompleted,
+        };
+        let newCompletedCourses = state.completedCourses;
+
+        if (courseCompleted) {
+          // Course completed!
+          newActiveCourse = null;
+          newCompletedCourses = [...state.completedCourses, courseDef.id];
+          // Bonus XP for completion
+          newPlayer.xp += Math.round(totalXp * 0.2); // 20% completion bonus
+          newPlayer.happiness = Math.min(100, newPlayer.happiness + 10);
+        }
+
+        set({
+          player: newPlayer,
+          activeCourse: newActiveCourse,
+          completedCourses: newCompletedCourses,
+        });
+
+        return {
+          success: true,
+          xpGained: xpPerSession + (courseCompleted ? Math.round(totalXp * 0.2) : 0),
+          energyCost,
+          courseCompleted,
+        };
+      },
+
+      dropCourse: () => {
+        set({ activeCourse: null });
+      },
+
+      isJobEligible: (jobId, seniority) => {
+        const state = get();
+        const jobListing = state.jobListings.find((j) => j.id === jobId);
+        if (!jobListing) return { eligible: false, missingXp: false, missingCourses: [], missingSkills: [] };
+
+        const level = jobListing.seniorityLevels.find((l) => l.key === seniority);
+        if (!level) return { eligible: false, missingXp: false, missingCourses: [], missingSkills: [] };
+
+        const missingXp = state.player.xp < level.minXp;
+        const missingCourses = level.requiredCourses.filter(
+          (c) => !state.completedCourses.includes(c),
+        );
+        const missingSkills = level.requirements
+          .filter((req) => {
+            const allSkills = [...state.skills.hard, ...state.skills.soft];
+            const playerSkill = allSkills.find((s) => s.name === req.skill);
+            return !playerSkill || playerSkill.level < req.level;
+          })
+          .map((req) => `${req.skill} Lv.${req.level}`);
+
+        return {
+          eligible: !missingXp && missingCourses.length === 0 && missingSkills.length === 0,
+          missingXp,
+          missingCourses,
+          missingSkills,
+        };
+      },
+
+      // ─── Banking Actions ─────────────────────
+
+      depositToSavings: (amount) => {
+        const state = get();
+        if (amount <= 0) return { success: false, reason: "مبلغ نامعتبر" };
+        if (amount > state.bank.checking) return { success: false, reason: "موجودی حساب جاری کافی نیست" };
+        set({
+          bank: {
+            ...state.bank,
+            checking: state.bank.checking - amount,
+            savings: state.bank.savings + amount,
+          },
+        });
+        return { success: true };
+      },
+
+      withdrawFromSavings: (amount) => {
+        const state = get();
+        if (amount <= 0) return { success: false, reason: "مبلغ نامعتبر" };
+        if (amount > state.bank.savings) return { success: false, reason: "موجودی پس‌انداز کافی نیست" };
+        set({
+          bank: {
+            ...state.bank,
+            savings: state.bank.savings - amount,
+            checking: state.bank.checking + amount,
+          },
+        });
+        return { success: true };
+      },
+
+      takeLoan: (loanTypeId) => {
+        const state = get();
+        const loanType = LOAN_TYPES.find((l) => l.id === loanTypeId);
+        if (!loanType) return { success: false, reason: "نوع وام نامعتبر" };
+        if (state.player.level < loanType.requiresLevel) return { success: false, reason: `سطح ${loanType.requiresLevel} لازم است` };
+        if (state.bank.savings < loanType.requiresSavings) return { success: false, reason: `حداقل ${loanType.requiresSavings.toLocaleString()} پس‌انداز لازم است` };
+        if (state.bank.loans.length >= 3) return { success: false, reason: "حداکثر ۳ وام فعال مجاز است" };
+
+        const monthly = calculateMonthlyPayment(loanType.maxAmount, loanType.interestRate, loanType.termMonths);
+        const newLoan: ActiveLoan = {
+          id: `loan_${Date.now()}`,
+          typeId: loanType.id,
+          typeName: loanType.name,
+          originalAmount: loanType.maxAmount,
+          remainingPrincipal: loanType.maxAmount,
+          monthlyPayment: monthly,
+          interestRate: loanType.interestRate,
+          remainingInstallments: loanType.termMonths,
+          totalInstallments: loanType.termMonths,
+          nextPaymentDay: state.player.dayInGame + 30,
+          latePayments: 0,
+        };
+
+        set({
+          bank: {
+            ...state.bank,
+            checking: state.bank.checking + loanType.maxAmount,
+            loans: [...state.bank.loans, newLoan],
+          },
+        });
+        return { success: true };
+      },
+
+      payLoanInstallment: (loanId) => {
+        const state = get();
+        const loan = state.bank.loans.find((l) => l.id === loanId);
+        if (!loan) return { success: false, reason: "وام یافت نشد" };
+        if (state.bank.checking < loan.monthlyPayment) return { success: false, reason: "موجودی کافی نیست" };
+
+        const updatedLoans = state.bank.loans
+          .map((l) => {
+            if (l.id !== loanId) return l;
+            const newRemaining = l.remainingInstallments - 1;
+            const newPrincipal = Math.max(0, l.remainingPrincipal - Math.round(l.monthlyPayment * (1 - l.interestRate / 100)));
+            return {
+              ...l,
+              remainingInstallments: newRemaining,
+              remainingPrincipal: newPrincipal,
+              nextPaymentDay: l.nextPaymentDay + 30,
+            };
+          })
+          .filter((l) => l.remainingInstallments > 0);
+
+        set({
+          bank: {
+            ...state.bank,
+            checking: state.bank.checking - loan.monthlyPayment,
+            loans: updatedLoans,
+          },
+        });
+        return { success: true };
+      },
+
+      // ─── Engine Tick ─────────────────────
 
       tick: () => {
         set((state) => {
@@ -443,11 +722,11 @@ export const useGameStore = create<GameState>()(
           currentTick: 0,
           isRunning: true,
           actionsCompletedToday: [],
-          routine: { morning: null, noon: null, evening: null, night: null },
-          routineStreak: 0,
-          routineCompletedToday: [],
-          currentMinutes: 0,
-          isEndOfDay: false,
+          completedCourses: [...seedCompletedCourses],
+          activeCourse: null,
+          todayCard: null,
+          cardHistory: [],
+          cardShielded: false,
         });
       },
     }),
@@ -463,11 +742,11 @@ export const useGameStore = create<GameState>()(
         wave: state.wave,
         currentTick: state.currentTick,
         actionsCompletedToday: state.actionsCompletedToday,
-        routine: state.routine,
-        routineStreak: state.routineStreak,
-        routineCompletedToday: state.routineCompletedToday,
-        currentMinutes: state.currentMinutes,
-        isEndOfDay: state.isEndOfDay,
+        completedCourses: state.completedCourses,
+        activeCourse: state.activeCourse,
+        todayCard: state.todayCard,
+        cardHistory: state.cardHistory,
+        cardShielded: state.cardShielded,
       }),
     },
   ),

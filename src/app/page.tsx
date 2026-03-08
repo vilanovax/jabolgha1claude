@@ -4,21 +4,27 @@ import GameHUD from "@/components/home/GameHUD";
 import CharacterStage from "@/components/home/CharacterStage";
 import StoryBubble from "@/components/home/StoryBubble";
 import HeroActionButton from "@/components/home/HeroActionButton";
-import DailyRoutine from "@/components/home/DailyRoutine";
 import RoomObjects from "@/components/home/RoomObjects";
 import ActionBottomSheet from "@/components/home/ActionBottomSheet";
-import RoutineSlotPicker from "@/components/home/RoutineSlotPicker";
 import EndOfDaySummary from "@/components/home/EndOfDaySummary";
+import DailyCardModal from "@/components/home/DailyCardModal";
 import BottomNav from "@/components/layout/BottomNav";
 import { useGameStore } from "@/stores/gameStore";
-import type { RoutineState } from "@/stores/gameStore";
 
 export default function HomePage() {
   const [done, setDone] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [pickerSlot, setPickerSlot] = useState<keyof RoutineState | null>(null);
-  const isEndOfDay = useGameStore((s) => s.isEndOfDay);
+  const [showEndOfDay, setShowEndOfDay] = useState(false);
+  const [showDailyCard, setShowDailyCard] = useState(false);
   const startNextDay = useGameStore((s) => s.startNextDay);
+  const todayCard = useGameStore((s) => s.todayCard);
+  const cardShielded = useGameStore((s) => s.cardShielded);
+
+  const handleStartNextDay = () => {
+    startNextDay();
+    setShowEndOfDay(false);
+    setShowDailyCard(true);
+  };
 
   const handleDone = (id: string) => {
     setDone((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -31,7 +37,7 @@ export default function HomePage() {
   return (
     <div className="scene-bg" style={{ minHeight: "100dvh" }}>
       {/* Floating HUD */}
-      <GameHUD />
+      <GameHUD onEndDay={() => setShowEndOfDay(true)} />
 
       {/* Floating particles (decorative) */}
       <div style={{
@@ -80,10 +86,6 @@ export default function HomePage() {
         <CharacterStage doneCount={done.length} />
         <StoryBubble />
         <HeroActionButton done={done} onOpenAction={handleOpenAction} />
-        <DailyRoutine
-          onOpenAction={handleOpenAction}
-          onOpenSlotPicker={(slot) => setPickerSlot(slot)}
-        />
         <RoomObjects done={done} onOpenAction={handleOpenAction} />
       </div>
 
@@ -94,17 +96,20 @@ export default function HomePage() {
         onDone={handleDone}
       />
 
-      {/* Routine Slot Picker */}
-      <RoutineSlotPicker
-        slot={pickerSlot}
-        onClose={() => setPickerSlot(null)}
-      />
-
       {/* End of Day Summary */}
       <EndOfDaySummary
-        isOpen={isEndOfDay && activeCategory === null}
-        onClose={startNextDay}
+        isOpen={showEndOfDay}
+        onClose={handleStartNextDay}
       />
+
+      {/* Daily Card Modal */}
+      {showDailyCard && todayCard && (
+        <DailyCardModal
+          card={todayCard}
+          shielded={cardShielded}
+          onDismiss={() => setShowDailyCard(false)}
+        />
+      )}
 
       <BottomNav />
     </div>

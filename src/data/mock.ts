@@ -20,20 +20,173 @@ export type MissionStatus = "pending" | "in_progress" | "done" | "claimable";
 export type JobDifficulty = "آسان" | "متوسط" | "سخت";
 export type GrowthPotential = "پایین" | "متوسط" | "بالا";
 
+export interface SponsoredCourseVariant {
+  brandName: string;
+  brandEmoji: string;
+  displayName: string;     // e.g. "پایتون Coursera"
+  cost: number;            // usually higher
+  xpReward: number;        // usually higher
+  skillBoost?: { skill: string; xpGain: number };
+  energyCostPerSession: number;
+}
+
+export interface CourseDefinition {
+  id: string;
+  name: string;
+  emoji: string;
+  field: string;          // e.g. "programming", "marketing", "accounting", "design", "management"
+  fieldLabel: string;     // Persian label for field
+  totalDays: number;
+  sessionsPerDay: number;
+  xpReward: number;
+  cost: number;           // course fee
+  energyCostPerSession: number;
+  skillBoost?: { skill: string; xpGain: number };
+  sponsoredVariant?: SponsoredCourseVariant;
+}
+
+export const COURSE_FIELDS: { key: string; label: string; emoji: string; color: string }[] = [
+  { key: "programming", label: "برنامه‌نویسی", emoji: "💻", color: "#3b82f6" },
+  { key: "marketing", label: "بازاریابی", emoji: "📣", color: "#f97316" },
+  { key: "accounting", label: "حسابداری", emoji: "🧮", color: "#22c55e" },
+  { key: "design", label: "طراحی", emoji: "🎨", color: "#a855f7" },
+  { key: "management", label: "مدیریت", emoji: "🎯", color: "#eab308" },
+];
+
+export const COURSE_CATALOG: CourseDefinition[] = [
+  // ─── Programming ────────────────────
+  {
+    id: "python_basics", name: "مبانی پایتون", emoji: "🐍",
+    field: "programming", fieldLabel: "برنامه‌نویسی",
+    totalDays: 7, sessionsPerDay: 3, xpReward: 50, cost: 2_000_000, energyCostPerSession: 8,
+    skillBoost: { skill: "programming", xpGain: 150 },
+    sponsoredVariant: {
+      brandName: "Coursera", brandEmoji: "🎓", displayName: "پایتون Coursera",
+      cost: 4_000_000, xpReward: 80, energyCostPerSession: 6,
+      skillBoost: { skill: "programming", xpGain: 220 },
+    },
+  },
+  {
+    id: "react_advanced", name: "React پیشرفته", emoji: "⚛️",
+    field: "programming", fieldLabel: "برنامه‌نویسی",
+    totalDays: 10, sessionsPerDay: 3, xpReward: 80, cost: 5_000_000, energyCostPerSession: 10,
+    skillBoost: { skill: "programming", xpGain: 250 },
+    sponsoredVariant: {
+      brandName: "Udemy", brandEmoji: "📕", displayName: "React پرو Udemy",
+      cost: 8_000_000, xpReward: 120, energyCostPerSession: 8,
+      skillBoost: { skill: "programming", xpGain: 380 },
+    },
+  },
+  {
+    id: "data_science", name: "علم داده", emoji: "📊",
+    field: "programming", fieldLabel: "برنامه‌نویسی",
+    totalDays: 14, sessionsPerDay: 2, xpReward: 100, cost: 8_000_000, energyCostPerSession: 12,
+    skillBoost: { skill: "programming", xpGain: 300 },
+    sponsoredVariant: {
+      brandName: "DataCamp", brandEmoji: "📈", displayName: "علم داده DataCamp",
+      cost: 14_000_000, xpReward: 160, energyCostPerSession: 10,
+      skillBoost: { skill: "programming", xpGain: 450 },
+    },
+  },
+
+  // ─── Marketing ────────────────────
+  {
+    id: "digital_marketing", name: "دیجیتال مارکتینگ", emoji: "📣",
+    field: "marketing", fieldLabel: "بازاریابی",
+    totalDays: 5, sessionsPerDay: 2, xpReward: 40, cost: 3_000_000, energyCostPerSession: 7,
+    skillBoost: { skill: "marketing", xpGain: 200 },
+    sponsoredVariant: {
+      brandName: "HubSpot", brandEmoji: "🟠", displayName: "مارکتینگ HubSpot",
+      cost: 5_500_000, xpReward: 65, energyCostPerSession: 5,
+      skillBoost: { skill: "marketing", xpGain: 300 },
+    },
+  },
+  {
+    id: "seo_mastery", name: "تسلط بر SEO", emoji: "🔍",
+    field: "marketing", fieldLabel: "بازاریابی",
+    totalDays: 7, sessionsPerDay: 2, xpReward: 60, cost: 4_000_000, energyCostPerSession: 8,
+    skillBoost: { skill: "marketing", xpGain: 250 },
+    sponsoredVariant: {
+      brandName: "Semrush", brandEmoji: "🔎", displayName: "SEO حرفه‌ای Semrush",
+      cost: 7_000_000, xpReward: 95, energyCostPerSession: 6,
+      skillBoost: { skill: "marketing", xpGain: 380 },
+    },
+  },
+
+  // ─── Accounting ────────────────────
+  {
+    id: "accounting_fundamentals", name: "مبانی حسابداری", emoji: "🧮",
+    field: "accounting", fieldLabel: "حسابداری",
+    totalDays: 8, sessionsPerDay: 2, xpReward: 50, cost: 3_500_000, energyCostPerSession: 8,
+    skillBoost: { skill: "accounting", xpGain: 200 },
+  },
+  {
+    id: "financial_analysis", name: "تحلیل مالی", emoji: "💹",
+    field: "accounting", fieldLabel: "حسابداری",
+    totalDays: 12, sessionsPerDay: 2, xpReward: 90, cost: 7_000_000, energyCostPerSession: 10,
+    skillBoost: { skill: "accounting", xpGain: 350 },
+    sponsoredVariant: {
+      brandName: "Bloomberg", brandEmoji: "📊", displayName: "تحلیل مالی Bloomberg",
+      cost: 12_000_000, xpReward: 140, energyCostPerSession: 8,
+      skillBoost: { skill: "accounting", xpGain: 520 },
+    },
+  },
+
+  // ─── Design ────────────────────
+  {
+    id: "ui_ux_design", name: "طراحی UI/UX", emoji: "🎨",
+    field: "design", fieldLabel: "طراحی",
+    totalDays: 10, sessionsPerDay: 2, xpReward: 70, cost: 6_000_000, energyCostPerSession: 9,
+    skillBoost: { skill: "design", xpGain: 280 },
+    sponsoredVariant: {
+      brandName: "Figma", brandEmoji: "🟣", displayName: "طراحی حرفه‌ای Figma",
+      cost: 10_000_000, xpReward: 110, energyCostPerSession: 7,
+      skillBoost: { skill: "design", xpGain: 420 },
+    },
+  },
+
+  // ─── Management ────────────────────
+  {
+    id: "leadership_101", name: "مبانی رهبری", emoji: "🎯",
+    field: "management", fieldLabel: "مدیریت",
+    totalDays: 6, sessionsPerDay: 2, xpReward: 45, cost: 4_000_000, energyCostPerSession: 7,
+    skillBoost: { skill: "leadership", xpGain: 180 },
+  },
+  {
+    id: "project_management", name: "مدیریت پروژه", emoji: "📋",
+    field: "management", fieldLabel: "مدیریت",
+    totalDays: 8, sessionsPerDay: 2, xpReward: 60, cost: 5_000_000, energyCostPerSession: 9,
+    skillBoost: { skill: "time_management", xpGain: 220 },
+    sponsoredVariant: {
+      brandName: "PMP", brandEmoji: "🏅", displayName: "PMP حرفه‌ای",
+      cost: 9_000_000, xpReward: 100, energyCostPerSession: 7,
+      skillBoost: { skill: "time_management", xpGain: 350 },
+    },
+  },
+];
+
+export const completedCourses: string[] = ["python_basics"];
+
+export type SeniorityKey = "junior" | "mid" | "senior";
+
+export interface SeniorityLevel {
+  key: SeniorityKey;
+  label: string;          // "جونیور", "میدلول", "سینیور"
+  salary: number;
+  minXp: number;
+  requiredCourses: string[];
+  requirements: { skill: string; level: number }[];
+}
+
 export interface JobListing {
   id: number;
   title: string;
   company: string;
   type: "استارتاپ" | "شرکت" | "دولتی";
-  salaryMin: number;
-  salaryMax: number;
   commission?: boolean;
   isRemote: boolean;
-  requirements: { skill: string; level: number }[];
-  suitable: boolean;
-  missing?: string;
+  seniorityLevels: SeniorityLevel[];
   postedAgo: number;
-  acceptanceChance: number;
   difficulty: JobDifficulty;
   growthPotential: GrowthPotential;
   energyCost: number;
@@ -185,6 +338,7 @@ export const job = {
   title: "توسعه‌دهنده فرانت‌اند",
   company: "استارتاپ دیجی‌کد",
   type: "استارتاپ" as const,
+  seniority: "mid" as SeniorityKey,
   salary: 45_000_000,
   industryXp: "IT",
   daysWorked: 32,
@@ -194,10 +348,9 @@ export const bank = {
   name: "بانک ملت",
   checking: 12_500_000,
   savings: 50_000_000,
-  savingsRate: 2.5,
-  loans: [
-    { type: "وام شخصی", amount: 30_000_000, monthlyPayment: 1_200_000, remaining: 22 },
-  ],
+  savingsInterestRate: 0.08,   // daily rate (%) — ~2.4% monthly
+  totalInterestEarned: 0,
+  loans: [] as import("@/data/loanTypes").ActiveLoan[],
 };
 
 export const fridgeItems = [
@@ -246,13 +399,25 @@ export const jobListings: JobListing[] = [
     title: "توسعه‌دهنده پایتون",
     company: "استارتاپ نوآوران",
     type: "استارتاپ",
-    salaryMin: 45_000_000,
-    salaryMax: 60_000_000,
     isRemote: true,
-    requirements: [{ skill: "برنامه‌نویسی", level: 6 }],
-    suitable: true,
+    seniorityLevels: [
+      {
+        key: "junior", label: "جونیور", salary: 25_000_000, minXp: 300,
+        requiredCourses: ["python_basics"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 3 }],
+      },
+      {
+        key: "mid", label: "میدلول", salary: 45_000_000, minXp: 800,
+        requiredCourses: ["python_basics"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 6 }],
+      },
+      {
+        key: "senior", label: "سینیور", salary: 70_000_000, minXp: 2500,
+        requiredCourses: ["python_basics", "data_science"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 8 }],
+      },
+    ],
     postedAgo: 2,
-    acceptanceChance: 72,
     difficulty: "متوسط",
     growthPotential: "بالا",
     energyCost: 25,
@@ -264,18 +429,26 @@ export const jobListings: JobListing[] = [
     title: "مدرس آنلاین پایتون",
     company: "آموزشگاه فناوری",
     type: "شرکت",
-    salaryMin: 30_000_000,
-    salaryMax: 30_000_000,
     commission: true,
     isRemote: true,
-    requirements: [
-      { skill: "برنامه‌نویسی", level: 5 },
-      { skill: "ارتباطات", level: 4 },
+    seniorityLevels: [
+      {
+        key: "junior", label: "جونیور", salary: 18_000_000, minXp: 200,
+        requiredCourses: ["python_basics"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 4 }],
+      },
+      {
+        key: "mid", label: "میدلول", salary: 30_000_000, minXp: 600,
+        requiredCourses: ["python_basics"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 5 }, { skill: "ارتباطات", level: 4 }],
+      },
+      {
+        key: "senior", label: "سینیور", salary: 50_000_000, minXp: 1800,
+        requiredCourses: ["python_basics", "react_advanced"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 7 }, { skill: "ارتباطات", level: 6 }],
+      },
     ],
-    suitable: false,
-    missing: "ارتباطات Lv.4",
     postedAgo: 1,
-    acceptanceChance: 35,
     difficulty: "آسان",
     growthPotential: "متوسط",
     energyCost: 15,
@@ -287,13 +460,25 @@ export const jobListings: JobListing[] = [
     title: "فرانت‌اند React",
     company: "شرکت پیشرو",
     type: "شرکت",
-    salaryMin: 55_000_000,
-    salaryMax: 70_000_000,
     isRemote: false,
-    requirements: [{ skill: "برنامه‌نویسی", level: 7 }],
-    suitable: true,
+    seniorityLevels: [
+      {
+        key: "junior", label: "جونیور", salary: 30_000_000, minXp: 500,
+        requiredCourses: ["react_advanced"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 5 }],
+      },
+      {
+        key: "mid", label: "میدلول", salary: 55_000_000, minXp: 1500,
+        requiredCourses: ["react_advanced"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 7 }],
+      },
+      {
+        key: "senior", label: "سینیور", salary: 85_000_000, minXp: 4000,
+        requiredCourses: ["react_advanced", "ui_ux_design"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 9 }],
+      },
+    ],
     postedAgo: 3,
-    acceptanceChance: 65,
     difficulty: "سخت",
     growthPotential: "بالا",
     energyCost: 30,
@@ -305,13 +490,25 @@ export const jobListings: JobListing[] = [
     title: "کارشناس IT",
     company: "سازمان دولتی",
     type: "دولتی",
-    salaryMin: 18_000_000,
-    salaryMax: 22_000_000,
     isRemote: false,
-    requirements: [{ skill: "برنامه‌نویسی", level: 3 }],
-    suitable: true,
+    seniorityLevels: [
+      {
+        key: "junior", label: "جونیور", salary: 15_000_000, minXp: 100,
+        requiredCourses: [],
+        requirements: [{ skill: "برنامه‌نویسی", level: 2 }],
+      },
+      {
+        key: "mid", label: "میدلول", salary: 22_000_000, minXp: 500,
+        requiredCourses: [],
+        requirements: [{ skill: "برنامه‌نویسی", level: 4 }],
+      },
+      {
+        key: "senior", label: "سینیور", salary: 35_000_000, minXp: 1500,
+        requiredCourses: ["project_management"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 6 }],
+      },
+    ],
     postedAgo: 0,
-    acceptanceChance: 88,
     difficulty: "آسان",
     growthPotential: "پایین",
     energyCost: 20,
@@ -323,17 +520,25 @@ export const jobListings: JobListing[] = [
     title: "مدیر فنی CTO",
     company: "تک‌استار ونچرز",
     type: "استارتاپ",
-    salaryMin: 120_000_000,
-    salaryMax: 150_000_000,
     isRemote: false,
-    requirements: [
-      { skill: "برنامه‌نویسی", level: 8 },
-      { skill: "رهبری", level: 3 },
+    seniorityLevels: [
+      {
+        key: "junior", label: "جونیور", salary: 60_000_000, minXp: 1500,
+        requiredCourses: ["react_advanced"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 7 }],
+      },
+      {
+        key: "mid", label: "میدلول", salary: 100_000_000, minXp: 3500,
+        requiredCourses: ["react_advanced", "leadership_101"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 8 }, { skill: "رهبری", level: 3 }],
+      },
+      {
+        key: "senior", label: "سینیور", salary: 150_000_000, minXp: 6000,
+        requiredCourses: ["react_advanced", "leadership_101", "project_management"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 9 }, { skill: "رهبری", level: 5 }],
+      },
     ],
-    suitable: false,
-    missing: "رهبری Lv.3",
     postedAgo: 0,
-    acceptanceChance: 25,
     difficulty: "سخت",
     growthPotential: "بالا",
     energyCost: 35,
@@ -345,13 +550,25 @@ export const jobListings: JobListing[] = [
     title: "تحلیلگر داده",
     company: "دیجی‌کالا",
     type: "شرکت",
-    salaryMin: 55_000_000,
-    salaryMax: 65_000_000,
     isRemote: true,
-    requirements: [{ skill: "برنامه‌نویسی", level: 5 }],
-    suitable: true,
+    seniorityLevels: [
+      {
+        key: "junior", label: "جونیور", salary: 30_000_000, minXp: 400,
+        requiredCourses: ["data_science"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 4 }],
+      },
+      {
+        key: "mid", label: "میدلول", salary: 55_000_000, minXp: 1200,
+        requiredCourses: ["data_science"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 6 }],
+      },
+      {
+        key: "senior", label: "سینیور", salary: 80_000_000, minXp: 3000,
+        requiredCourses: ["data_science", "financial_analysis"],
+        requirements: [{ skill: "برنامه‌نویسی", level: 8 }],
+      },
+    ],
     postedAgo: 1,
-    acceptanceChance: 60,
     difficulty: "متوسط",
     growthPotential: "متوسط",
     energyCost: 20,
@@ -630,36 +847,37 @@ export const homeActivities = [
     available: true,
   },
   {
-    id: "eat",
-    emoji: "🍳",
-    label: "غذا بخور",
-    sublabel: "یخچال: ۴ آیتم آماده",
+    id: "library",
+    emoji: "📖",
+    label: "کتابخانه",
+    sublabel: "مطالعه کتاب‌های داستانی و مهارتی",
     iconBg: "linear-gradient(135deg, #c2410c, #f97316)",
     iconGlow: "rgba(249,115,22,0.35)",
-    href: "/fridge",
+    href: "#",
     costs: [
-      { icon: "⏱️", label: "۵ دقیقه" },
+      { icon: "⏱️", label: "۳۰ دقیقه" },
+      { icon: "⚡", label: "-۸ انرژی" },
     ],
     rewards: [
-      { icon: "🍔", label: "+۴۰ سیری" },
-      { icon: "⚡", label: "+۵۰ انرژی" },
+      { icon: "😊", label: "+۱۲ خوشحالی" },
+      { icon: "✨", label: "+۳ تجربه" },
     ],
     available: true,
   },
   {
-    id: "sleep",
-    emoji: "😴",
-    label: "بخواب",
-    sublabel: "ریکاوری کامل انرژی",
+    id: "rest",
+    emoji: "🛋️",
+    label: "استراحت",
+    sublabel: "چرت، فیلم یا خواب کامل",
     iconBg: "linear-gradient(135deg, #6d28d9, #8b5cf6)",
     iconGlow: "rgba(139,92,246,0.35)",
     href: "#",
     costs: [
-      { icon: "⏱️", label: "۸ ساعت" },
+      { icon: "⏱️", label: "۳۰ دقیقه" },
     ],
     rewards: [
-      { icon: "⚡", label: "+۶۰ انرژی" },
-      { icon: "😊", label: "+۱۰ خوشحالی" },
+      { icon: "⚡", label: "+۲۰ انرژی" },
+      { icon: "😊", label: "+۸ خوشحالی" },
     ],
     available: true,
   },

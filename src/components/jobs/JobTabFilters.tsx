@@ -1,27 +1,25 @@
 "use client";
 import { toPersian } from "@/data/mock";
 
-type TabKey = "suitable" | "hot" | "premium" | "all";
+type TabKey = "all" | "hot" | "premium";
 
 interface Props {
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
-  counts: { suitable: number; hot: number; premium: number; all: number };
+  counts: { all: number; hot: number; premium: number };
 }
 
 const tabs: { key: TabKey; emoji: string; label: string }[] = [
-  { key: "suitable", emoji: "🎯", label: "مناسب" },
+  { key: "all", emoji: "📋", label: "همه" },
   { key: "hot", emoji: "🔥", label: "داغ" },
   { key: "premium", emoji: "⭐", label: "ویژه" },
-  { key: "all", emoji: "📋", label: "همه" },
 ];
 
 function getTabColors(key: TabKey): { bg: string; shadow: string } {
   switch (key) {
-    case "suitable": return { bg: "linear-gradient(180deg, #22c55e, #16a34a)", shadow: "rgba(34,197,94,0.35)" };
+    case "all": return { bg: "linear-gradient(180deg, #3b82f6, #2563eb)", shadow: "rgba(59,130,246,0.35)" };
     case "hot": return { bg: "linear-gradient(180deg, #f97316, #ea580c)", shadow: "rgba(249,115,22,0.35)" };
     case "premium": return { bg: "linear-gradient(180deg, #D4A843, #A8831F)", shadow: "rgba(212,168,67,0.35)" };
-    case "all": return { bg: "linear-gradient(180deg, #3b82f6, #2563eb)", shadow: "rgba(59,130,246,0.35)" };
   }
 }
 

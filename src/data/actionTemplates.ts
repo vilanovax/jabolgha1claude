@@ -13,6 +13,19 @@ export interface ActionRisk {
   penalty: { key: string; value: number }; // stat penalty when triggered
 }
 
+export interface SponsoredVariant {
+  brandName: string;       // e.g. "ردبول", "کاله"
+  brandEmoji: string;
+  displayName: string;     // e.g. "انرژی‌زای ردبول"
+  costs: {
+    energy?: number;
+    money?: number;
+    time: number;
+  };
+  effects: ActionEffect[];
+  risk?: ActionRisk;
+}
+
 export interface ActionOption {
   id: string;
   name: string;
@@ -24,6 +37,7 @@ export interface ActionOption {
   };
   effects: ActionEffect[];
   risk?: ActionRisk;
+  sponsoredVariant?: SponsoredVariant;
 }
 
 export interface ActionCategory {
@@ -63,7 +77,7 @@ export const WAVE_ACTION_MODIFIERS: Record<WavePhase, {
   mini_recession: {
     label: "تورم! هزینه‌ها بالا",
     categoryModifiers: {
-      eat: { costMult: 1.3 },
+      library: { costMult: 1.3 },
       work: { effectMult: 0.7 },
       invest: { effectMult: 0.6 },
     },
@@ -95,6 +109,17 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           { key: "happiness", value: 5, label: "😊 +۵ خوشحالی" },
           { key: "health", value: 5, label: "❤️ +۵ سلامت" },
         ],
+        sponsoredVariant: {
+          brandName: "نایکی",
+          brandEmoji: "👟",
+          displayName: "پیاده‌روی با نایکی",
+          costs: { energy: 10, money: 2_000_000, time: 20 },
+          effects: [
+            { key: "happiness", value: 12, label: "😊 +۱۲ خوشحالی" },
+            { key: "health", value: 10, label: "❤️ +۱۰ سلامت" },
+            { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
+          ],
+        },
       },
       {
         id: "gym",
@@ -106,6 +131,17 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           { key: "happiness", value: 5, label: "😊 +۵ خوشحالی" },
           { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
         ],
+        sponsoredVariant: {
+          brandName: "تکنوجیم",
+          brandEmoji: "🏋️",
+          displayName: "باشگاه تکنوجیم",
+          costs: { energy: 30, money: 3_000_000, time: 60 },
+          effects: [
+            { key: "health", value: 28, label: "❤️ +۲۸ سلامت" },
+            { key: "happiness", value: 10, label: "😊 +۱۰ خوشحالی" },
+            { key: "stars", value: 2, label: "⭐ +۲ ستاره" },
+          ],
+        },
       },
       {
         id: "heavy_training",
@@ -123,94 +159,108 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           label: "آسیب‌دیدگی! 🤕",
           penalty: { key: "energy", value: -30 },
         },
+        sponsoredVariant: {
+          brandName: "کراس‌فیت",
+          brandEmoji: "💪",
+          displayName: "تمرین کراس‌فیت",
+          costs: { energy: 50, money: 4_000_000, time: 90 },
+          effects: [
+            { key: "health", value: 40, label: "❤️ +۴۰ سلامت" },
+            { key: "happiness", value: 15, label: "😊 +۱۵ خوشحالی" },
+            { key: "stars", value: 3, label: "⭐ +۳ ستاره" },
+          ],
+          risk: {
+            chance: 0.03,
+            effect: "injury",
+            label: "آسیب‌دیدگی! 🤕",
+            penalty: { key: "energy", value: -30 },
+          },
+        },
       },
     ],
   },
 
-  // ─── Eat ─────────────────────────────
+  // ─── Library (کتابخانه) ──────────────────
   {
-    id: "eat",
-    name: "صبحانه",
-    emoji: "🍳",
-    description: "تغذیه برای انرژی و سلامت",
+    id: "library",
+    name: "کتابخانه",
+    emoji: "📖",
+    description: "مطالعه کتاب‌های داستانی و مهارتی",
     options: [
       {
-        id: "simple_breakfast",
-        name: "نون و پنیر",
-        emoji: "🧀",
-        costs: { money: 500_000, time: 10 },
+        id: "story_book",
+        name: "کتاب داستان",
+        emoji: "📕",
+        costs: { energy: 8, money: 500_000, time: 30 },
         effects: [
-          { key: "energy", value: 15, label: "⚡ +۱۵ انرژی" },
-          { key: "hunger", value: 20, label: "🍔 +۲۰ سیری" },
+          { key: "happiness", value: 12, label: "😊 +۱۲ خوشحالی" },
+          { key: "xp", value: 3, label: "✨ +۳ تجربه" },
         ],
+        sponsoredVariant: {
+          brandName: "نشر چشمه",
+          brandEmoji: "📕",
+          displayName: "داستان نشر چشمه",
+          costs: { energy: 8, money: 1_500_000, time: 30 },
+          effects: [
+            { key: "happiness", value: 20, label: "😊 +۲۰ خوشحالی" },
+            { key: "xp", value: 6, label: "✨ +۶ تجربه" },
+            { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
+          ],
+        },
       },
       {
-        id: "full_breakfast",
-        name: "صبحانه کامل",
-        emoji: "🍽️",
-        costs: { money: 2_000_000, time: 20 },
+        id: "softskill_book",
+        name: "کتاب مهارت نرم",
+        emoji: "🧠",
+        costs: { energy: 15, money: 1_500_000, time: 45 },
         effects: [
-          { key: "energy", value: 30, label: "⚡ +۳۰ انرژی" },
-          { key: "hunger", value: 40, label: "🍔 +۴۰ سیری" },
+          { key: "xp", value: 10, label: "✨ +۱۰ تجربه" },
           { key: "happiness", value: 5, label: "😊 +۵ خوشحالی" },
         ],
+        sponsoredVariant: {
+          brandName: "آمازون کیندل",
+          brandEmoji: "📱",
+          displayName: "کتاب مهارتی کیندل",
+          costs: { energy: 12, money: 3_500_000, time: 45 },
+          effects: [
+            { key: "xp", value: 20, label: "✨ +۲۰ تجربه" },
+            { key: "happiness", value: 10, label: "😊 +۱۰ خوشحالی" },
+            { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
+          ],
+        },
       },
       {
-        id: "brand_breakfast",
-        name: "صبحانه برند خاص",
-        emoji: "✨",
-        costs: { money: 3_000_000, time: 25 },
+        id: "psychology_book",
+        name: "کتاب روانشناسی",
+        emoji: "💡",
+        costs: { energy: 20, money: 2_000_000, time: 60 },
         effects: [
-          { key: "energy", value: 40, label: "⚡ +۴۰ انرژی" },
-          { key: "hunger", value: 50, label: "🍔 +۵۰ سیری" },
-          { key: "happiness", value: 8, label: "😊 +۸ خوشحالی" },
-          { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
+          { key: "happiness", value: 15, label: "😊 +۱۵ خوشحالی" },
+          { key: "xp", value: 8, label: "✨ +۸ تجربه" },
+          { key: "health", value: 5, label: "❤️ +۵ سلامت" },
         ],
+        risk: {
+          chance: 0.05,
+          effect: "overthink",
+          label: "فکر بیش از حد! 🤯",
+          penalty: { key: "energy", value: -10 },
+        },
+        sponsoredVariant: {
+          brandName: "نشر نی",
+          brandEmoji: "💡",
+          displayName: "روانشناسی نشر نی",
+          costs: { energy: 18, money: 4_000_000, time: 60 },
+          effects: [
+            { key: "happiness", value: 25, label: "😊 +۲۵ خوشحالی" },
+            { key: "xp", value: 15, label: "✨ +۱۵ تجربه" },
+            { key: "health", value: 10, label: "❤️ +۱۰ سلامت" },
+            { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
+          ],
+        },
       },
     ],
   },
 
-  // ─── Sleep ───────────────────────────
-  {
-    id: "sleep",
-    name: "خواب",
-    emoji: "😴",
-    description: "استراحت برای بازیابی انرژی",
-    options: [
-      {
-        id: "nap",
-        name: "چرت ۳۰ دقیقه",
-        emoji: "💤",
-        costs: { time: 30 },
-        effects: [
-          { key: "energy", value: 20, label: "⚡ +۲۰ انرژی" },
-          { key: "happiness", value: 3, label: "😊 +۳ خوشحالی" },
-        ],
-      },
-      {
-        id: "full_sleep",
-        name: "خواب کامل",
-        emoji: "🛏️",
-        costs: { time: 480 },
-        effects: [
-          { key: "energy", value: 50, label: "⚡ +۵۰ انرژی" },
-          { key: "happiness", value: 10, label: "😊 +۱۰ خوشحالی" },
-          { key: "health", value: 5, label: "❤️ +۵ سلامت" },
-        ],
-      },
-      {
-        id: "golden_sleep",
-        name: "خواب طلایی",
-        emoji: "👑",
-        costs: { time: 600 },
-        effects: [
-          { key: "energy", value: 60, label: "⚡ +۶۰ انرژی" },
-          { key: "happiness", value: 15, label: "😊 +۱۵ خوشحالی" },
-          { key: "health", value: 10, label: "❤️ +۱۰ سلامت" },
-        ],
-      },
-    ],
-  },
 
   // ─── Study ───────────────────────────
   {
@@ -227,6 +277,15 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         effects: [
           { key: "xp", value: 5, label: "✨ +۵ تجربه" },
         ],
+        sponsoredVariant: {
+          brandName: "کیندل",
+          brandEmoji: "📱",
+          displayName: "مرور با کیندل",
+          costs: { energy: 10, money: 1_000_000, time: 15 },
+          effects: [
+            { key: "xp", value: 12, label: "✨ +۱۲ تجربه" },
+          ],
+        },
       },
       {
         id: "study_session",
@@ -237,6 +296,16 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           { key: "xp", value: 15, label: "✨ +۱۵ تجربه" },
           { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
         ],
+        sponsoredVariant: {
+          brandName: "کورسرا",
+          brandEmoji: "🎓",
+          displayName: "دوره کورسرا",
+          costs: { energy: 20, money: 3_000_000, time: 45 },
+          effects: [
+            { key: "xp", value: 30, label: "✨ +۳۰ تجربه" },
+            { key: "stars", value: 2, label: "⭐ +۲ ستاره" },
+          ],
+        },
       },
       {
         id: "study_marathon",
@@ -252,6 +321,22 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           effect: "fatigue",
           label: "خستگی ذهنی! 🤯",
           penalty: { key: "happiness", value: -10 },
+        },
+        sponsoredVariant: {
+          brandName: "یودمی",
+          brandEmoji: "🧠",
+          displayName: "بوت‌کمپ یودمی",
+          costs: { energy: 40, money: 6_000_000, time: 120 },
+          effects: [
+            { key: "xp", value: 55, label: "✨ +۵۵ تجربه" },
+            { key: "stars", value: 4, label: "⭐ +۴ ستاره" },
+          ],
+          risk: {
+            chance: 0.05,
+            effect: "fatigue",
+            label: "خستگی ذهنی! 🤯",
+            penalty: { key: "happiness", value: -10 },
+          },
         },
       },
     ],
@@ -305,42 +390,76 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
     ],
   },
 
-  // ─── Rest ────────────────────────────
+  // ─── Rest (استراحت) ─ merged sleep + leisure ──
   {
     id: "rest",
     name: "استراحت",
-    emoji: "☕",
-    description: "آرامش و تفریح",
+    emoji: "🛋️",
+    description: "استراحت، خواب و تفریح",
     options: [
       {
-        id: "tea",
-        name: "چای و آرامش",
+        id: "nap",
+        name: "چرت و چای",
         emoji: "☕",
-        costs: { time: 15 },
+        costs: { time: 30 },
         effects: [
-          { key: "energy", value: 10, label: "⚡ +۱۰ انرژی" },
-          { key: "happiness", value: 5, label: "😊 +۵ خوشحالی" },
+          { key: "energy", value: 20, label: "⚡ +۲۰ انرژی" },
+          { key: "happiness", value: 8, label: "😊 +۸ خوشحالی" },
         ],
+        sponsoredVariant: {
+          brandName: "چای احمد",
+          brandEmoji: "☕",
+          displayName: "چرت با چای احمد",
+          costs: { money: 500_000, time: 30 },
+          effects: [
+            { key: "energy", value: 30, label: "⚡ +۳۰ انرژی" },
+            { key: "happiness", value: 15, label: "😊 +۱۵ خوشحالی" },
+          ],
+        },
       },
       {
         id: "movie",
-        name: "تماشای فیلم",
+        name: "فیلم و استراحت",
         emoji: "🎬",
         costs: { time: 120 },
         effects: [
-          { key: "energy", value: 15, label: "⚡ +۱۵ انرژی" },
-          { key: "happiness", value: 10, label: "😊 +۱۰ خوشحالی" },
+          { key: "energy", value: 25, label: "⚡ +۲۵ انرژی" },
+          { key: "happiness", value: 15, label: "😊 +۱۵ خوشحالی" },
         ],
+        sponsoredVariant: {
+          brandName: "نتفلیکس",
+          brandEmoji: "🎬",
+          displayName: "فیلم نتفلیکس",
+          costs: { money: 2_000_000, time: 120 },
+          effects: [
+            { key: "energy", value: 35, label: "⚡ +۳۵ انرژی" },
+            { key: "happiness", value: 25, label: "😊 +۲۵ خوشحالی" },
+            { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
+          ],
+        },
       },
       {
-        id: "hangout",
-        name: "خروج با دوستان",
-        emoji: "🎉",
-        costs: { money: 5_000_000, energy: 10, time: 180 },
+        id: "full_sleep",
+        name: "خواب کامل",
+        emoji: "🛏️",
+        costs: { time: 480 },
         effects: [
-          { key: "happiness", value: 20, label: "😊 +۲۰ خوشحالی" },
-          { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
+          { key: "energy", value: 55, label: "⚡ +۵۵ انرژی" },
+          { key: "happiness", value: 12, label: "😊 +۱۲ خوشحالی" },
+          { key: "health", value: 8, label: "❤️ +۸ سلامت" },
         ],
+        sponsoredVariant: {
+          brandName: "تمپور",
+          brandEmoji: "🛏️",
+          displayName: "خواب با تشک تمپور",
+          costs: { money: 5_000_000, time: 480 },
+          effects: [
+            { key: "energy", value: 80, label: "⚡ +۸۰ انرژی" },
+            { key: "happiness", value: 22, label: "😊 +۲۲ خوشحالی" },
+            { key: "health", value: 15, label: "❤️ +۱۵ سلامت" },
+            { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
+          ],
+        },
       },
     ],
   },
@@ -367,6 +486,22 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           label: "ضرر کردی! 📉",
           penalty: { key: "money", value: -3_000_000 },
         },
+        sponsoredVariant: {
+          brandName: "نوبیتکس",
+          brandEmoji: "🪙",
+          displayName: "سرمایه‌گذاری نوبیتکس",
+          costs: { money: 10_000_000, time: 15 },
+          effects: [
+            { key: "money", value: 5_000_000, label: "💰 +۵M سود" },
+            { key: "xp", value: 5, label: "✨ +۵ تجربه" },
+          ],
+          risk: {
+            chance: 0.3,
+            effect: "loss",
+            label: "ضرر کردی! 📉",
+            penalty: { key: "money", value: -5_000_000 },
+          },
+        },
       },
       {
         id: "medium_invest",
@@ -382,6 +517,22 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           effect: "loss",
           label: "ضرر کردی! 📉",
           penalty: { key: "money", value: -10_000_000 },
+        },
+        sponsoredVariant: {
+          brandName: "سهام‌یاب",
+          brandEmoji: "💹",
+          displayName: "پلتفرم سهام‌یاب",
+          costs: { money: 25_000_000, time: 30 },
+          effects: [
+            { key: "money", value: 18_000_000, label: "💰 +۱۸M سود" },
+            { key: "xp", value: 8, label: "✨ +۸ تجربه" },
+          ],
+          risk: {
+            chance: 0.4,
+            effect: "loss",
+            label: "ضرر کردی! 📉",
+            penalty: { key: "money", value: -15_000_000 },
+          },
         },
       },
       {
@@ -399,6 +550,23 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           effect: "loss",
           label: "ضرر سنگین! 📉📉",
           penalty: { key: "money", value: -25_000_000 },
+        },
+        sponsoredVariant: {
+          brandName: "گلدمن",
+          brandEmoji: "🏦",
+          displayName: "صندوق گلدمن",
+          costs: { money: 50_000_000, time: 60 },
+          effects: [
+            { key: "money", value: 40_000_000, label: "💰 +۴۰M سود" },
+            { key: "xp", value: 15, label: "✨ +۱۵ تجربه" },
+            { key: "stars", value: 3, label: "⭐ +۳ ستاره" },
+          ],
+          risk: {
+            chance: 0.5,
+            effect: "loss",
+            label: "ضرر سنگین! 📉📉",
+            penalty: { key: "money", value: -35_000_000 },
+          },
         },
       },
     ],

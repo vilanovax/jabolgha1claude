@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { ACTION_CATEGORIES, WAVE_ACTION_MODIFIERS } from "@/data/actionTemplates";
-import type { ActionOption, ActionEffect } from "@/data/actionTemplates";
+import type { ActionOption, ActionEffect, SponsoredVariant } from "@/data/actionTemplates";
 import { useGameStore } from "@/stores/gameStore";
 import type { ActionResult } from "@/stores/gameStore";
 import { toPersian, formatMoney } from "@/data/mock";
@@ -38,11 +38,8 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
   const [result, setResult] = useState<ActionResult | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [shakeConfirm, setShakeConfirm] = useState(false);
+  const [sponsoredMode, setSponsoredMode] = useState(false);
   const executeAction = useGameStore((s) => s.executeAction);
-  const advanceTime = useGameStore((s) => s.advanceTime);
-  const forceEndOfDay = useGameStore((s) => s.forceEndOfDay);
-  const isEndOfDay = useGameStore((s) => s.isEndOfDay);
-  const currentMinutes = useGameStore((s) => s.currentMinutes);
   const wavePhase = useGameStore((s) => s.wave.currentPhase);
 
   // Reset state when category changes
@@ -52,6 +49,7 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
       setResult(null);
       setSelectedIndex(null);
       setShakeConfirm(false);
+      setSponsoredMode(false);
     }
   }, [categoryId]);
 
@@ -67,9 +65,11 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
     if (selectedIndex === null) return;
 
     const option = category.options[selectedIndex];
+    const sponsored = sponsoredMode ? option.sponsoredVariant : undefined;
+    const activeCosts = sponsored ? sponsored.costs : option.costs;
     const cm = catMod?.costMult ?? 1;
-    const energyCost = option.costs.energy ? Math.round(option.costs.energy * cm) : 0;
-    const moneyCost = option.costs.money ? Math.round(option.costs.money * cm) : 0;
+    const energyCost = activeCosts.energy ? Math.round(activeCosts.energy * cm) : 0;
+    const moneyCost = activeCosts.money ? Math.round(activeCosts.money * cm) : 0;
     const state = useGameStore.getState();
 
     if (state.player.energy < energyCost || state.bank.checking < moneyCost) {
@@ -81,16 +81,7 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
     setPhase("executing");
 
     setTimeout(() => {
-      const actionResult = executeAction(categoryId, selectedIndex);
-
-      if (actionResult.success) {
-        // Advance game time
-        if (categoryId === "sleep" && (option.id === "full_sleep" || option.id === "golden_sleep")) {
-          forceEndOfDay();
-        } else {
-          advanceTime(option.costs.time);
-        }
-      }
+      const actionResult = executeAction(categoryId, selectedIndex, sponsoredMode);
 
       setResult(actionResult);
       setPhase("result");
@@ -104,6 +95,7 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
     setPhase("choosing");
     setResult(null);
     setSelectedIndex(null);
+    setSponsoredMode(false);
     onClose();
   };
 
@@ -145,11 +137,11 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
             waveLabel={waveMod.label}
             waveEmoji={useGameStore.getState().wave.phaseEmoji}
             selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
+            onSelect={(i) => { setSelectedIndex(i); setSponsoredMode(false); }}
             onConfirm={handleConfirm}
             shakeConfirm={shakeConfirm}
-            isEndOfDay={isEndOfDay}
-            currentMinutes={currentMinutes}
+            sponsoredMode={sponsoredMode}
+            onSponsoredToggle={setSponsoredMode}
           />
         )}
 
@@ -157,6 +149,7 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
           <ExecutingPhase
             category={category}
             option={selectedIndex !== null ? category.options[selectedIndex] : undefined}
+            sponsoredVariant={sponsoredMode && selectedIndex !== null ? category.options[selectedIndex].sponsoredVariant : undefined}
           />
         )}
 
@@ -170,7 +163,7 @@ export default function ActionBottomSheet({ categoryId, onClose, onDone }: Props
 
 // ─── Phase: Choosing ─────────────────────────
 
-function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, onSelect, onConfirm, shakeConfirm, isEndOfDay, currentMinutes }: {
+function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, onSelect, onConfirm, shakeConfirm, sponsoredMode, onSponsoredToggle }: {
   category: (typeof ACTION_CATEGORIES)[0];
   catMod?: { effectMult?: number; costMult?: number };
   waveLabel: string;
@@ -179,45 +172,28 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
   onSelect: (index: number) => void;
   onConfirm: () => void;
   shakeConfirm: boolean;
-  isEndOfDay: boolean;
-  currentMinutes: number;
+  sponsoredMode: boolean;
+  onSponsoredToggle: (v: boolean) => void;
 }) {
   const player = useGameStore((s) => s.player);
   const bank = useGameStore((s) => s.bank);
 
   const selectedOption = selectedIndex !== null ? category.options[selectedIndex] : null;
+  const sponsored = sponsoredMode && selectedOption?.sponsoredVariant ? selectedOption.sponsoredVariant : null;
   const cm = catMod?.costMult ?? 1;
   const em = catMod?.effectMult ?? 1;
 
+  // Resolve costs based on sponsored mode
+  const resolvedCosts = sponsored ? sponsored.costs : selectedOption?.costs;
+
   // Compute affordability for confirm button
-  const canAfford = selectedOption ? (
-    player.energy >= (selectedOption.costs.energy ? Math.round(selectedOption.costs.energy * cm) : 0) &&
-    bank.checking >= (selectedOption.costs.money ? Math.round(selectedOption.costs.money * cm) : 0)
+  const canAfford = resolvedCosts ? (
+    player.energy >= (resolvedCosts.energy ? Math.round(resolvedCosts.energy * cm) : 0) &&
+    bank.checking >= (resolvedCosts.money ? Math.round(resolvedCosts.money * cm) : 0)
   ) : true;
 
   // Smart suggestion
   const suggestion = getSuggestion(player, category);
-
-  const remainingMinutes = 960 - currentMinutes;
-
-  // End of day → show block message
-  if (isEndOfDay) {
-    return (
-      <div style={{ textAlign: "center", padding: "30px 0" }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🌙</div>
-        <div style={{
-          fontSize: 15, fontWeight: 800, color: "white", marginBottom: 8,
-        }}>
-          روز تموم شده!
-        </div>
-        <div style={{
-          fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 4,
-        }}>
-          خلاصه روز رو ببین و روز بعد رو شروع کن
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -266,16 +242,6 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
         <StatMini emoji="💰" value={bank.checking} isMoney color="#4ade80" label="موجودی" />
       </div>
 
-      {/* Remaining time */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "center",
-        gap: 4, marginBottom: 10,
-        fontSize: 9, fontWeight: 700,
-        color: remainingMinutes < 120 ? "#fbbf24" : "rgba(255,255,255,0.35)",
-      }}>
-        🕐 {toPersian(remainingMinutes)} دقیقه باقی‌مونده از روز
-      </div>
-
       {/* Options */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {category.options.map((opt, i) => (
@@ -288,16 +254,30 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
             playerMoney={bank.checking}
             costMult={catMod?.costMult}
             effectMult={catMod?.effectMult}
-            wouldEndDay={currentMinutes + opt.costs.time >= 960}
             onSelect={() => onSelect(i)}
+            sponsoredMode={selectedIndex === i && sponsoredMode}
+            sponsoredVariant={opt.sponsoredVariant}
           />
         ))}
       </div>
 
+      {/* Sponsor Toggle */}
+      {selectedOption?.sponsoredVariant && (
+        <SponsorToggle
+          sponsored={selectedOption.sponsoredVariant}
+          active={sponsoredMode}
+          onToggle={onSponsoredToggle}
+        />
+      )}
+
       {/* Preview Bar */}
       {selectedOption && (
         <PreviewBar
-          option={selectedOption}
+          option={sponsored ? {
+            ...selectedOption,
+            costs: sponsored.costs,
+            effects: sponsored.effects,
+          } : selectedOption}
           player={player}
           bankChecking={bank.checking}
           costMult={cm}
@@ -331,10 +311,14 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
             padding: "14px 0",
             borderRadius: 18,
             border: canAfford
-              ? `1.5px solid ${TIER_COLORS[selectedIndex!].border}`
+              ? sponsoredMode
+                ? "1.5px solid rgba(212,168,67,0.4)"
+                : `1.5px solid ${TIER_COLORS[selectedIndex!].border}`
               : "1.5px solid rgba(255,255,255,0.08)",
             background: canAfford
-              ? `linear-gradient(135deg, ${TIER_COLORS[selectedIndex!].glow}, rgba(255,255,255,0.04))`
+              ? sponsoredMode
+                ? "linear-gradient(135deg, rgba(212,168,67,0.15), rgba(240,201,102,0.08))"
+                : `linear-gradient(135deg, ${TIER_COLORS[selectedIndex!].glow}, rgba(255,255,255,0.04))`
               : "rgba(255,255,255,0.03)",
             color: canAfford ? "white" : "rgba(255,255,255,0.3)",
             fontSize: 14,
@@ -349,8 +333,8 @@ function ChoosingPhase({ category, catMod, waveLabel, waveEmoji, selectedIndex, 
         >
           {canAfford ? (
             <>
-              <span>{selectedOption.emoji}</span>
-              انجام بده!
+              <span>{sponsoredMode && sponsored ? sponsored.brandEmoji : selectedOption.emoji}</span>
+              {sponsoredMode && sponsored ? `انجام بده! ✦ ${sponsored.brandName}` : "انجام بده!"}
             </>
           ) : (
             <>😤 منابع کافی نیست</>
@@ -403,7 +387,7 @@ function StatMini({ emoji, value, max, color, label, isMoney }: {
 
 // ─── Option Card ────────────────────────────────
 
-function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, costMult, effectMult, wouldEndDay, onSelect }: {
+function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, costMult, effectMult, onSelect, sponsoredMode, sponsoredVariant }: {
   option: ActionOption;
   index: number;
   isSelected: boolean;
@@ -411,30 +395,42 @@ function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, cost
   playerMoney: number;
   costMult?: number;
   effectMult?: number;
-  wouldEndDay?: boolean;
   onSelect: () => void;
+  sponsoredMode?: boolean;
+  sponsoredVariant?: SponsoredVariant;
 }) {
   const cm = costMult ?? 1;
-  const energyCost = option.costs.energy ? Math.round(option.costs.energy * cm) : 0;
-  const moneyCost = option.costs.money ? Math.round(option.costs.money * cm) : 0;
+  const isSponsored = isSelected && sponsoredMode && sponsoredVariant;
+  const activeCosts = isSponsored ? sponsoredVariant.costs : option.costs;
+  const activeEffects = isSponsored ? sponsoredVariant.effects : option.effects;
+  const activeRisk = isSponsored ? (sponsoredVariant.risk !== undefined ? sponsoredVariant.risk : option.risk) : option.risk;
+
+  const energyCost = activeCosts.energy ? Math.round(activeCosts.energy * cm) : 0;
+  const moneyCost = activeCosts.money ? Math.round(activeCosts.money * cm) : 0;
   const canAfford = playerEnergy >= energyCost && playerMoney >= moneyCost;
 
   const tier = TIER_COLORS[index];
+
+  // Gold styling for sponsored
+  const borderColor = isSponsored ? "#D4A843" : tier.accent;
+  const glowColor = isSponsored ? "rgba(212,168,67,0.35)" : tier.glowStrong;
 
   return (
     <button
       onClick={onSelect}
       className={isSelected ? "anim-card-glow" : ""}
       style={{
-        "--glow": tier.glowStrong,
+        "--glow": glowColor,
         width: "100%",
         padding: "12px 14px",
         borderRadius: 18,
         background: isSelected
-          ? `linear-gradient(145deg, ${tier.glow}, rgba(255,255,255,0.05))`
+          ? isSponsored
+            ? "linear-gradient(145deg, rgba(212,168,67,0.08), rgba(255,255,255,0.05))"
+            : `linear-gradient(145deg, ${tier.glow}, rgba(255,255,255,0.05))`
           : `linear-gradient(145deg, ${tier.glow}, rgba(255,255,255,0.02))`,
         border: isSelected
-          ? `1.5px solid ${tier.accent}`
+          ? `1.5px solid ${borderColor}`
           : `1px solid ${canAfford ? tier.border : "rgba(255,255,255,0.06)"}`,
         cursor: "pointer",
         opacity: canAfford ? 1 : 0.45,
@@ -451,7 +447,9 @@ function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, cost
         <div style={{
           position: "absolute", top: 0, left: 0, right: 0,
           height: 2,
-          background: `linear-gradient(90deg, transparent, ${tier.accent}, transparent)`,
+          background: isSponsored
+            ? "linear-gradient(90deg, transparent, #D4A843, #F0C966, transparent)"
+            : `linear-gradient(90deg, transparent, ${tier.accent}, transparent)`,
           opacity: 0.6,
         }} />
       )}
@@ -464,31 +462,43 @@ function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, cost
         <div style={{
           display: "flex", alignItems: "center", gap: 6,
         }}>
-          <span style={{ fontSize: 18 }}>{option.emoji}</span>
+          <span style={{ fontSize: 18 }}>{isSponsored ? sponsoredVariant.brandEmoji : option.emoji}</span>
           <span style={{
             fontSize: 12, fontWeight: 800,
             color: isSelected ? "white" : "rgba(255,255,255,0.85)",
           }}>
-            {option.name}
+            {isSponsored ? sponsoredVariant.displayName : option.name}
           </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {wouldEndDay && (
+          {/* Sponsor badge on selected card */}
+          {isSponsored && (
             <span style={{
-              fontSize: 7, fontWeight: 700, color: "#fbbf24",
-              padding: "1px 5px", borderRadius: 4,
-              background: "rgba(251,191,36,0.1)",
-              border: "1px solid rgba(251,191,36,0.15)",
+              fontSize: 8, fontWeight: 800,
+              padding: "2px 6px", borderRadius: 6,
+              background: "linear-gradient(135deg, #D4A843, #F0C966)",
+              color: "white",
+              textShadow: "0 1px 2px rgba(0,0,0,0.2)",
             }}>
-              پایان روز!
+              ✦ {sponsoredVariant.brandName}
             </span>
           )}
-          <span style={{
-            fontSize: 8, fontWeight: 600, color: "rgba(255,255,255,0.3)",
-          }}>
-            ⏱ {toPersian(option.costs.time)} دقیقه
-          </span>
+          {/* Small gold dot for non-selected cards that have sponsored variant */}
+          {!isSelected && sponsoredVariant && (
+            <span style={{
+              fontSize: 7, fontWeight: 800,
+              padding: "1px 5px", borderRadius: 4,
+              background: "rgba(212,168,67,0.12)",
+              color: "#D4A843",
+              border: "1px solid rgba(212,168,67,0.2)",
+            }}>
+              ✦
+            </span>
+          )}
         </div>
+        <span style={{
+          fontSize: 8, fontWeight: 600, color: "rgba(255,255,255,0.3)",
+        }}>
+          ⏱ {toPersian(activeCosts.time)} دقیقه
+        </span>
       </div>
 
       {/* Costs + Effects inline */}
@@ -507,7 +517,7 @@ function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, cost
             bg="rgba(239,68,68,0.1)" color="#f87171" border="rgba(239,68,68,0.15)"
           />
         )}
-        {option.effects.map((eff, j) => {
+        {activeEffects.map((eff, j) => {
           const eM = effectMult ?? 1;
           const val = Math.round(eff.value * eM);
           const label = eff.label.replace(/[+\-][\d۰-۹,.]+/, (m) => {
@@ -519,21 +529,23 @@ function OptionCard({ option, index, isSelected, playerEnergy, playerMoney, cost
             <Chip
               key={j}
               text={label}
-              bg="rgba(74,222,128,0.1)" color="#4ade80" border="rgba(74,222,128,0.15)"
+              bg={isSponsored ? "rgba(212,168,67,0.1)" : "rgba(74,222,128,0.1)"}
+              color={isSponsored ? "#F0C966" : "#4ade80"}
+              border={isSponsored ? "rgba(212,168,67,0.2)" : "rgba(74,222,128,0.15)"}
             />
           );
         })}
       </div>
 
       {/* Risk warning */}
-      {option.risk && (
+      {activeRisk && (
         <div style={{
           marginTop: 5,
           fontSize: 8, fontWeight: 700,
           color: "#fbbf24",
           display: "flex", alignItems: "center", gap: 3,
         }}>
-          ⚠️ {toPersian(Math.round(option.risk.chance * 100))}٪ احتمال: {option.risk.label}
+          ⚠️ {toPersian(Math.round(activeRisk.chance * 100))}٪ احتمال: {activeRisk.label}
         </div>
       )}
     </button>
@@ -664,10 +676,10 @@ function getSuggestion(
     if (player.energy < 30) return "با توجه به انرژی پایین، پیاده‌روی ساده پیشنهاد می‌شود";
     if (player.energy > 70) return "انرژی بالاست! می‌تونی تمرین سنگین بزنی 💪";
   }
-  if (category.id === "eat") {
-    if (player.hunger < 30) return "خیلی گرسنه‌ای! صبحانه کامل بخور 🍽️";
+  if (category.id === "library") {
+    if (player.happiness < 40) return "یه کتاب داستانی بخون، روحیه‌ات رو بالا می‌بره 📕";
   }
-  if (category.id === "sleep") {
+  if (category.id === "rest") {
     if (player.energy < 20) return "خیلی خسته‌ای! خواب کامل لازمه 😴";
     if (player.energy > 60) return "هنوز انرژی داری، یه چرت کوتاه کافیه";
   }
@@ -682,6 +694,65 @@ function getSuggestion(
     return "سرمایه‌گذاری ریسک داره! با احتیاط انتخاب کن 📊";
   }
   return null;
+}
+
+// ─── Sponsor Toggle ─────────────────────────────
+
+function SponsorToggle({ sponsored, active, onToggle }: {
+  sponsored: SponsoredVariant;
+  active: boolean;
+  onToggle: (v: boolean) => void;
+}) {
+  return (
+    <div style={{
+      marginTop: 10,
+      padding: "6px",
+      borderRadius: 14,
+      background: "rgba(255,255,255,0.03)",
+      border: active ? "1px solid rgba(212,168,67,0.25)" : "1px solid rgba(255,255,255,0.06)",
+      display: "flex",
+      gap: 4,
+      transition: "border-color 0.2s ease",
+    }}>
+      <button
+        onClick={() => onToggle(false)}
+        style={{
+          flex: 1,
+          padding: "8px 0",
+          borderRadius: 10,
+          border: "none",
+          background: !active ? "rgba(255,255,255,0.08)" : "transparent",
+          color: !active ? "white" : "rgba(255,255,255,0.4)",
+          fontSize: 11, fontWeight: 800,
+          fontFamily: "inherit",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+        }}
+      >
+        عادی
+      </button>
+      <button
+        onClick={() => onToggle(true)}
+        style={{
+          flex: 1,
+          padding: "8px 0",
+          borderRadius: 10,
+          border: "none",
+          background: active
+            ? "linear-gradient(135deg, #D4A843, #F0C966)"
+            : "transparent",
+          color: active ? "white" : "rgba(255,255,255,0.4)",
+          fontSize: 11, fontWeight: 800,
+          fontFamily: "inherit",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+          textShadow: active ? "0 1px 2px rgba(0,0,0,0.2)" : "none",
+        }}
+      >
+        ✦ اسپانسری · {sponsored.brandName}
+      </button>
+    </div>
+  );
 }
 
 // ─── Chip Component ─────────────────────────────
@@ -702,22 +773,38 @@ function Chip({ text, bg, color, border }: {
 
 // ─── Phase: Executing ────────────────────────
 
-function ExecutingPhase({ category, option }: {
+function ExecutingPhase({ category, option, sponsoredVariant }: {
   category: (typeof ACTION_CATEGORIES)[0];
   option?: ActionOption;
+  sponsoredVariant?: SponsoredVariant;
 }) {
+  const isSponsored = !!sponsoredVariant;
+
   return (
     <div style={{ textAlign: "center", padding: "30px 0" }}>
       <div className="anim-breathe" style={{
         fontSize: 56, marginBottom: 16,
       }}>
-        {option?.emoji ?? category.emoji}
+        {isSponsored ? sponsoredVariant.brandEmoji : (option?.emoji ?? category.emoji)}
       </div>
       <div style={{
         fontSize: 15, fontWeight: 800, color: "white", marginBottom: 4,
       }}>
-        {option ? option.name : category.name}
+        {isSponsored ? sponsoredVariant.displayName : (option ? option.name : category.name)}
       </div>
+      {isSponsored && (
+        <div style={{
+          display: "inline-block",
+          fontSize: 9, fontWeight: 800,
+          padding: "3px 10px", borderRadius: 8,
+          background: "linear-gradient(135deg, #D4A843, #F0C966)",
+          color: "white",
+          textShadow: "0 1px 2px rgba(0,0,0,0.2)",
+          marginBottom: 8,
+        }}>
+          ✦ {sponsoredVariant.brandName}
+        </div>
+      )}
       <div style={{
         fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 16,
       }}>
@@ -734,7 +821,9 @@ function ExecutingPhase({ category, option }: {
         <div className="anim-loading-bar" style={{
           width: "40%", height: "100%",
           borderRadius: 3,
-          background: "linear-gradient(90deg, rgba(255,255,255,0.05), #818cf8, rgba(255,255,255,0.05))",
+          background: isSponsored
+            ? "linear-gradient(90deg, rgba(255,255,255,0.05), #D4A843, #F0C966, rgba(255,255,255,0.05))"
+            : "linear-gradient(90deg, rgba(255,255,255,0.05), #818cf8, rgba(255,255,255,0.05))",
         }} />
       </div>
     </div>
@@ -808,12 +897,26 @@ function ResultPhase({ result, onClose }: {
         <>
           <div className="anim-reward-pop" style={{
             fontSize: 56, marginBottom: 12,
-          }}>✅</div>
+          }}>{result.wasSponsored ? "🌟" : "✅"}</div>
           <div style={{
-            fontSize: 16, fontWeight: 900, color: "white", marginBottom: 16,
+            fontSize: 16, fontWeight: 900, color: "white", marginBottom: 6,
           }}>
             انجام شد!
           </div>
+          {result.wasSponsored && result.brandName && (
+            <div style={{
+              display: "inline-block",
+              fontSize: 10, fontWeight: 800,
+              padding: "3px 12px", borderRadius: 8,
+              background: "linear-gradient(135deg, #D4A843, #F0C966)",
+              color: "white",
+              textShadow: "0 1px 2px rgba(0,0,0,0.2)",
+              marginBottom: 12,
+            }}>
+              ✦ با اسپانسری {result.brandName}
+            </div>
+          )}
+          {!result.wasSponsored && <div style={{ height: 10 }} />}
         </>
       )}
 
@@ -826,9 +929,9 @@ function ResultPhase({ result, onClose }: {
           <div key={i} className="anim-reward-float" style={{
             fontSize: 11, fontWeight: 700,
             padding: "6px 14px", borderRadius: 14,
-            background: "rgba(74,222,128,0.1)",
-            color: "#4ade80",
-            border: "1px solid rgba(74,222,128,0.2)",
+            background: result.wasSponsored ? "rgba(212,168,67,0.1)" : "rgba(74,222,128,0.1)",
+            color: result.wasSponsored ? "#F0C966" : "#4ade80",
+            border: result.wasSponsored ? "1px solid rgba(212,168,67,0.25)" : "1px solid rgba(74,222,128,0.2)",
             animationDelay: `${i * 0.1}s`,
           }}>
             {eff.label}
@@ -838,9 +941,11 @@ function ResultPhase({ result, onClose }: {
 
       <button onClick={onClose} style={{
         width: "100%", padding: "12px 0", borderRadius: 16,
-        border: "1px solid rgba(34,197,94,0.2)",
-        background: "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.08))",
-        color: "#4ade80",
+        border: result.wasSponsored ? "1px solid rgba(212,168,67,0.3)" : "1px solid rgba(34,197,94,0.2)",
+        background: result.wasSponsored
+          ? "linear-gradient(135deg, rgba(212,168,67,0.15), rgba(212,168,67,0.08))"
+          : "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.08))",
+        color: result.wasSponsored ? "#F0C966" : "#4ade80",
         fontSize: 13, fontWeight: 800,
         fontFamily: "inherit", cursor: "pointer",
       }}>

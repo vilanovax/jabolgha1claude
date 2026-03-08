@@ -1,14 +1,16 @@
 "use client";
-import { player, activeCourse, fridgeItems, toPersian } from "@/data/mock";
+import { useRouter } from "next/navigation";
 import { useGameStore } from "@/stores/gameStore";
+import { fridgeItems, toPersian } from "@/data/mock";
 
 interface RoomObject {
   id: string;
   emoji: string;
   label: string;
-  getStatus: (done: string[]) => string;
+  getStatus: (done: string[], state: { energy: number; activeCourseDay?: number }) => string;
   actionCategory: string;
   glowColor: string;
+  navigateTo?: string; // if set, navigate instead of opening action sheet
 }
 
 const OBJECTS: RoomObject[] = [
@@ -21,28 +23,29 @@ const OBJECTS: RoomObject[] = [
     glowColor: "rgba(212,168,67,0.3)",
   },
   {
-    id: "bookshelf",
+    id: "courses",
     emoji: "📚",
-    label: "قفسه کتاب",
-    getStatus: () =>
-      activeCourse ? `روز ${toPersian(activeCourse.currentDay)}` : "—",
+    label: "دوره‌ها",
+    getStatus: (_done, state) =>
+      state.activeCourseDay ? `روز ${toPersian(state.activeCourseDay)}` : "ثبت‌نام",
     actionCategory: "study",
     glowColor: "rgba(59,130,246,0.3)",
+    navigateTo: "/skills",
   },
   {
-    id: "kitchen",
-    emoji: "🍳",
-    label: "آشپزخانه",
-    getStatus: () => `${toPersian(fridgeItems.length)} آیتم`,
-    actionCategory: "eat",
+    id: "library",
+    emoji: "📖",
+    label: "کتابخانه",
+    getStatus: (done) => done.includes("library") ? "✅" : "مطالعه",
+    actionCategory: "library",
     glowColor: "rgba(249,115,22,0.3)",
   },
   {
-    id: "bed",
-    emoji: "🛏",
-    label: "تخت",
-    getStatus: () => `${toPersian(player.energy)}٪`,
-    actionCategory: "sleep",
+    id: "rest",
+    emoji: "🛋️",
+    label: "استراحت",
+    getStatus: (done, state) => done.includes("rest") ? "✅" : `${toPersian(state.energy)}٪`,
+    actionCategory: "rest",
     glowColor: "rgba(139,92,246,0.3)",
   },
   {
@@ -54,12 +57,13 @@ const OBJECTS: RoomObject[] = [
     glowColor: "rgba(34,197,94,0.3)",
   },
   {
-    id: "sofa",
-    emoji: "☕",
-    label: "مبل",
-    getStatus: (done) => done.includes("rest") ? "✅" : "آرام",
-    actionCategory: "rest",
-    glowColor: "rgba(236,72,153,0.3)",
+    id: "fridge",
+    emoji: "🍳",
+    label: "یخچال",
+    getStatus: () => `${toPersian(fridgeItems.length)} آیتم`,
+    actionCategory: "fridge",
+    glowColor: "rgba(249,115,22,0.3)",
+    navigateTo: "/fridge",
   },
 ];
 
@@ -70,7 +74,14 @@ export default function RoomObjects({
   done: string[];
   onOpenAction: (categoryId: string) => void;
 }) {
-  const isEndOfDay = useGameStore((s) => s.isEndOfDay);
+  const router = useRouter();
+  const energy = useGameStore((s) => s.player.energy);
+  const activeCourse = useGameStore((s) => s.activeCourse);
+
+  const stateInfo = {
+    energy,
+    activeCourseDay: activeCourse?.currentDay,
+  };
 
   return (
     <div style={{
@@ -78,18 +89,21 @@ export default function RoomObjects({
       gridTemplateColumns: "repeat(3, 1fr)",
       gap: 12,
       padding: "4px 8px",
-      opacity: isEndOfDay ? 0.4 : 1,
-      pointerEvents: isEndOfDay ? "none" : "auto",
-      transition: "opacity 0.3s ease",
     }}>
       {OBJECTS.map((obj) => {
-        const status = obj.getStatus(done);
+        const status = obj.getStatus(done, stateInfo);
 
         return (
           <div
             key={obj.id}
             className="room-object"
-            onClick={() => onOpenAction(obj.actionCategory)}
+            onClick={() => {
+              if (obj.navigateTo) {
+                router.push(obj.navigateTo);
+              } else {
+                onOpenAction(obj.actionCategory);
+              }
+            }}
             style={{
               cursor: "pointer",
               display: "flex",

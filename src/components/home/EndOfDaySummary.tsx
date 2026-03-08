@@ -10,18 +10,13 @@ interface Props {
 export default function EndOfDaySummary({ isOpen, onClose }: Props) {
   const player = useGameStore((s) => s.player);
   const actionsCompletedToday = useGameStore((s) => s.actionsCompletedToday);
-  const routineCompletedToday = useGameStore((s) => s.routineCompletedToday);
-  const routineStreak = useGameStore((s) => s.routineStreak);
 
   if (!isOpen) return null;
 
   const actionsCount = actionsCompletedToday.length;
-  const routineCount = routineCompletedToday.length;
-  const allRoutineDone = routineCount === 4;
 
   const summaryItems = [
     { emoji: "📋", label: "اکشن‌های انجام‌شده", value: `${toPersian(actionsCount)} عدد`, color: "#818cf8" },
-    { emoji: "📅", label: "روتین‌های انجام‌شده", value: `${toPersian(routineCount)}/۴`, color: allRoutineDone ? "#4ade80" : "#fb923c" },
     { emoji: "⚡", label: "انرژی باقی‌مونده", value: `${toPersian(player.energy)}٪`, color: player.energy > 30 ? "#facc15" : "#f87171" },
     { emoji: "😊", label: "روحیه", value: toPersian(player.happiness), color: player.happiness > 50 ? "#4ade80" : "#f87171" },
     { emoji: "✨", label: "تجربه کل", value: toPersian(player.xp), color: "#c084fc" },
@@ -102,21 +97,6 @@ export default function EndOfDaySummary({ isOpen, onClose }: Props) {
           ))}
         </div>
 
-        {/* Streak bonus */}
-        {allRoutineDone && (
-          <div style={{
-            textAlign: "center",
-            padding: "8px 12px",
-            borderRadius: 12,
-            background: "rgba(74,222,128,0.06)",
-            border: "1px solid rgba(74,222,128,0.15)",
-            marginBottom: 16,
-            fontSize: 11, fontWeight: 700, color: "#4ade80",
-          }}>
-            🔥 {toPersian(routineStreak)} روز متوالی روتین کامل! +۵ XP
-          </div>
-        )}
-
         {/* Recovery info */}
         <div style={{
           textAlign: "center",
@@ -143,7 +123,7 @@ export default function EndOfDaySummary({ isOpen, onClose }: Props) {
           justifyContent: "center",
           gap: 6,
         }}>
-          شروع روز بعد ←
+          شروع روز بعد
         </button>
       </div>
     </div>
