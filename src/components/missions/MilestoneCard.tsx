@@ -19,22 +19,45 @@ export default function MilestoneCard({ milestone }: { milestone: Milestone }) {
     ? `${formatMoney(milestone.progress)} / ${formatMoney(milestone.target)}`
     : `${toPersian(milestone.progress)} / ${toPersian(milestone.target)} ${milestone.unit}`;
 
+  const isClose = progressPct >= 75;
+
   return (
     <div style={{
       padding: "14px 16px",
-      background: "rgba(255,255,255,0.03)",
+      background: isClose
+        ? "rgba(245,158,11,0.03)"
+        : "rgba(255,255,255,0.03)",
       borderRadius: 18,
-      border: "1px solid rgba(255,255,255,0.06)",
+      border: isClose
+        ? "1px solid rgba(245,158,11,0.12)"
+        : "1px solid rgba(255,255,255,0.06)",
+      position: "relative",
+      overflow: "hidden",
     }}>
+      {/* Close to completion hint */}
+      {isClose && (
+        <div style={{
+          position: "absolute", top: 0, left: 0,
+          fontSize: 7, fontWeight: 800,
+          padding: "2px 8px",
+          borderRadius: "0 0 8px 0",
+          background: "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.1))",
+          color: "#f59e0b",
+        }}>
+          نزدیکه! 🔥
+        </div>
+      )}
+
       {/* Title row */}
       <div style={{
         display: "flex", alignItems: "center", gap: 10, marginBottom: 10,
       }}>
-        <div style={{
-          width: 38, height: 38, borderRadius: 12, flexShrink: 0,
-          background: "rgba(255,255,255,0.05)",
+        <div className={isClose ? "icon-idle-float" : ""} style={{
+          width: 40, height: 40, borderRadius: 14, flexShrink: 0,
+          background: "rgba(245,158,11,0.06)",
+          border: "1px solid rgba(245,158,11,0.1)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 18,
+          fontSize: 20,
         }}>
           {milestone.emoji}
         </div>
@@ -42,6 +65,16 @@ export default function MilestoneCard({ milestone }: { milestone: Milestone }) {
           <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>
             {milestone.title}
           </div>
+          {/* Category label */}
+          <span style={{
+            fontSize: 8, fontWeight: 800,
+            padding: "1px 6px", borderRadius: 6,
+            background: "rgba(245,158,11,0.1)",
+            color: "#f59e0b",
+            border: "1px solid rgba(245,158,11,0.15)",
+          }}>
+            دستاورد
+          </span>
         </div>
         {/* Badge preview */}
         <div style={{
@@ -64,21 +97,29 @@ export default function MilestoneCard({ milestone }: { milestone: Milestone }) {
           <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
             {progressLabel}
           </span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#fb923c" }}>
+          <span style={{
+            fontSize: 9, fontWeight: 800, color: "#000",
+            background: isClose
+              ? "linear-gradient(135deg, #f59e0b, #f97316)"
+              : "linear-gradient(135deg, #fb923c, #f97316)",
+            borderRadius: 6, padding: "1px 6px",
+          }}>
             {toPersian(progressPct)}٪
           </span>
         </div>
         <div style={{
-          height: 5, borderRadius: 3,
+          height: 6, borderRadius: 4,
           background: "rgba(255,255,255,0.08)",
           overflow: "hidden",
         }}>
-          <div style={{
+          <div className={isClose ? "progress-bar-animated" : ""} style={{
             width: `${progressPct}%`,
             height: "100%",
-            borderRadius: 3,
-            background: "linear-gradient(90deg, #f97316, #fb923c)",
-            boxShadow: "0 0 6px rgba(249,115,22,0.3)",
+            borderRadius: 4,
+            background: isClose
+              ? "linear-gradient(90deg, #f59e0b, #fb923c)"
+              : "linear-gradient(90deg, #f97316, #fb923c)",
+            boxShadow: isClose ? "0 0 8px rgba(249,115,22,0.4)" : "0 0 6px rgba(249,115,22,0.3)",
             transition: "width 0.6s ease",
           }} />
         </div>

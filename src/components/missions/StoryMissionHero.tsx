@@ -1,6 +1,8 @@
 "use client";
-import { storyArc, formatMoney, toPersian } from "@/data/mock";
-import type { MissionReward } from "@/data/mock";
+import { formatMoney, toPersian } from "@/data/mock";
+import { getMissionProgressPercent, getMissionRemainingTextFa } from "@/game/missions/progress";
+import { STORY_ARCS } from "@/game/missions/story-arcs";
+import type { Mission } from "@/game/missions/types";
 
 function RewardChip({ icon, label, color, bg, border }: {
   icon: string; label: string; color: string; bg: string; border: string;
@@ -16,15 +18,18 @@ function RewardChip({ icon, label, color, bg, border }: {
   );
 }
 
-export default function ActiveStoryArcCard({ onClaim }: {
-  onClaim?: (reward: MissionReward) => void;
+export default function StoryMissionHero({ mission, arcId, episodeIndex, onClaim }: {
+  mission: Mission;
+  arcId: string | null;
+  episodeIndex: number;
+  onClaim: () => void;
 }) {
-  const arc = storyArc;
-  const progressPct = Math.min(100, Math.round((arc.progress / arc.target) * 100));
-  const isClaimable = arc.status === "claimable";
-  const progressLabel = arc.unit === "تومان"
-    ? `${formatMoney(arc.progress)} / ${formatMoney(arc.target)}`
-    : `${toPersian(arc.progress)} / ${toPersian(arc.target)}`;
+  const arc = arcId ? STORY_ARCS.find((a) => a.id === arcId) : null;
+  const totalEpisodes = arc?.episodes.length ?? 5;
+  const progressPct = getMissionProgressPercent(mission);
+  const remainingText = getMissionRemainingTextFa(mission);
+  const isClaimable = mission.status === "completed";
+  const { rewards } = mission;
 
   return (
     <div className={isClaimable ? "anim-claim-pulse" : ""} style={{
@@ -40,66 +45,44 @@ export default function ActiveStoryArcCard({ onClaim }: {
       position: "relative",
       overflow: "hidden",
     }}>
-      {/* Subtle glow background */}
       <div style={{
-        position: "absolute", top: -40, left: -40, width: 120, height: 120,
+        position: "absolute", top: -40, left: -40, width: 140, height: 140,
         borderRadius: "50%",
         background: "radial-gradient(circle, rgba(250,204,21,0.06) 0%, transparent 70%)",
         pointerEvents: "none",
       }} />
-      <div style={{
-        position: "absolute", bottom: -30, right: -30, width: 100, height: 100,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(168,85,247,0.04) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
 
-      {/* Sparkle particles for claimable */}
-      {isClaimable && (
-        <>
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} style={{
-              position: "absolute",
-              top: `${15 + i * 20}%`,
-              right: `${10 + i * 22}%`,
-              width: 4,
-              height: 4,
-              borderRadius: "50%",
-              background: "#facc15",
-              animation: `sparkle ${1.5 + i * 0.3}s ease-in-out ${i * 0.4}s infinite`,
-              pointerEvents: "none",
-            }} />
-          ))}
-        </>
-      )}
+      {isClaimable && [0, 1, 2, 3].map((i) => (
+        <div key={i} style={{
+          position: "absolute",
+          top: `${15 + i * 20}%`, right: `${10 + i * 22}%`,
+          width: 4, height: 4, borderRadius: "50%", background: "#facc15",
+          animation: `sparkle ${1.5 + i * 0.3}s ease-in-out ${i * 0.4}s infinite`,
+          pointerEvents: "none",
+        }} />
+      ))}
 
-      {/* Category label + episode */}
+      {/* Category label */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         marginBottom: 14,
       }}>
         <span style={{
-          fontSize: 9, fontWeight: 800,
-          padding: "3px 10px", borderRadius: 12,
+          fontSize: 9, fontWeight: 800, padding: "3px 10px", borderRadius: 12,
           background: "linear-gradient(135deg, rgba(168,85,247,0.2), rgba(168,85,247,0.08))",
-          color: "#c084fc",
-          border: "1px solid rgba(168,85,247,0.25)",
+          color: "#c084fc", border: "1px solid rgba(168,85,247,0.25)",
           display: "flex", alignItems: "center", gap: 4,
         }}>
           <span style={{ fontSize: 12 }}>🎬</span>
-          داستان
+          داستان فعال
         </span>
-        <span style={{
-          fontSize: 9, color: "rgba(255,255,255,0.25)", fontWeight: 700,
-        }}>
-          اپیزود {toPersian(arc.episode)} از {toPersian(arc.totalEpisodes)}
+        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", fontWeight: 700 }}>
+          اپیزود {toPersian(episodeIndex + 1)} از {toPersian(totalEpisodes)}
         </span>
       </div>
 
       {/* Character + dialogue */}
-      <div style={{
-        display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16,
-      }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
         <div className="anim-breathe" style={{
           width: 56, height: 56, borderRadius: "50%", flexShrink: 0,
           background: "rgba(255,255,255,0.06)",
@@ -108,45 +91,41 @@ export default function ActiveStoryArcCard({ onClaim }: {
           fontSize: 30,
           boxShadow: "0 0 20px rgba(250,204,21,0.12)",
         }}>
-          {arc.character}
+          {mission.character ?? "🧑"}
         </div>
-
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 11, fontWeight: 700, color: "#facc15", marginBottom: 4,
-          }}>
-            {arc.characterName}
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#facc15", marginBottom: 4 }}>
+            {mission.characterName ?? "راهنما"}
           </div>
           <div style={{
             fontSize: 14, fontWeight: 800, color: "rgba(255,255,255,0.85)",
-            lineHeight: 1.5,
-            padding: "8px 12px",
+            lineHeight: 1.5, padding: "8px 12px",
             background: "rgba(255,255,255,0.04)",
             borderRadius: "4px 16px 16px 16px",
             border: "1px solid rgba(255,255,255,0.06)",
           }}>
-            «{arc.title}»
+            «{mission.titleFa}»
           </div>
         </div>
       </div>
 
-      {/* Dialogue text */}
-      <div style={{
-        fontSize: 12, color: "rgba(255,255,255,0.5)",
-        marginBottom: 14, lineHeight: 1.5,
-      }}>
-        {arc.dialogue}
-      </div>
+      {mission.dialogue && (
+        <div style={{
+          fontSize: 12, color: "rgba(255,255,255,0.5)",
+          marginBottom: 14, lineHeight: 1.6,
+        }}>
+          {mission.dialogue}
+        </div>
+      )}
 
-      {/* Episode nodes (chain) */}
+      {/* Episode nodes */}
       <div style={{
         display: "flex", alignItems: "center", gap: 4,
         marginBottom: 14, padding: "0 4px",
       }}>
-        {Array.from({ length: arc.totalEpisodes }).map((_, i) => {
-          const done = i + 1 < arc.episode;
-          const current = i + 1 === arc.episode;
-          const locked = i + 1 > arc.episode;
+        {Array.from({ length: totalEpisodes }).map((_, i) => {
+          const done = i < episodeIndex;
+          const current = i === episodeIndex;
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", flex: 1 }}>
               <div className={current ? "anim-mission-glow" : ""} style={{
@@ -158,18 +137,17 @@ export default function ActiveStoryArcCard({ onClaim }: {
                     : "rgba(255,255,255,0.04)",
                 border: current
                   ? "2px solid rgba(250,204,21,0.5)"
-                  : done
-                    ? "1.5px solid rgba(250,204,21,0.3)"
-                    : "1px solid rgba(255,255,255,0.06)",
+                  : done ? "1.5px solid rgba(250,204,21,0.3)"
+                  : "1px solid rgba(255,255,255,0.06)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: done ? 9 : 8,
-                fontWeight: 800,
+                fontSize: done ? 9 : 8, fontWeight: 800,
                 color: done ? "#000" : current ? "#facc15" : "rgba(255,255,255,0.15)",
-                boxShadow: done ? "0 0 6px rgba(250,204,21,0.3)" : current ? "0 0 10px rgba(250,204,21,0.2)" : "none",
+                boxShadow: done ? "0 0 6px rgba(250,204,21,0.3)"
+                  : current ? "0 0 10px rgba(250,204,21,0.2)" : "none",
               }}>
-                {done ? "✓" : locked ? "🔒" : toPersian(i + 1)}
+                {done ? "✓" : i > episodeIndex ? "🔒" : toPersian(i + 1)}
               </div>
-              {i < arc.totalEpisodes - 1 && (
+              {i < totalEpisodes - 1 && (
                 <div style={{
                   flex: 1, height: 2, marginRight: 2, marginLeft: 2,
                   background: done
@@ -185,16 +163,14 @@ export default function ActiveStoryArcCard({ onClaim }: {
 
       {/* Progress bar */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{
-          display: "flex", justifyContent: "space-between", marginBottom: 5,
-        }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>
-            پیشرفت اپیزود فعلی
+            پیشرفت اپیزود
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#facc15" }}>
-              {progressLabel}
-            </span>
+            {remainingText && (
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>{remainingText}</span>
+            )}
             <span style={{
               fontSize: 9, fontWeight: 800, color: "#000",
               background: "linear-gradient(135deg, #facc15, #f59e0b)",
@@ -204,68 +180,47 @@ export default function ActiveStoryArcCard({ onClaim }: {
             </span>
           </div>
         </div>
-        <div style={{
-          height: 10, borderRadius: 6,
-          background: "rgba(255,255,255,0.08)",
-          overflow: "hidden",
-          position: "relative",
-        }}>
+        <div style={{ height: 10, borderRadius: 6, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
           <div className="progress-bar-animated" style={{
-            width: `${progressPct}%`,
-            height: "100%",
-            borderRadius: 6,
+            width: `${progressPct}%`, height: "100%", borderRadius: 6,
             background: isClaimable
               ? "linear-gradient(90deg, #facc15, #fbbf24)"
               : "linear-gradient(90deg, #facc15, #f59e0b)",
             boxShadow: "0 0 12px rgba(250,204,21,0.4)",
             transition: "width 0.8s ease",
-            position: "relative",
-            overflow: "hidden",
           }} />
         </div>
       </div>
 
       {/* Reward chips */}
-      <div style={{
-        display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap",
-      }}>
-        {arc.reward.xp > 0 && (
-          <RewardChip icon="✨" label={`+${toPersian(arc.reward.xp)} XP`}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {(rewards.xp ?? 0) > 0 && (
+          <RewardChip icon="✨" label={`+${toPersian(rewards.xp!)} XP`}
             color="#c084fc" bg="rgba(168,85,247,0.12)" border="rgba(168,85,247,0.2)" />
         )}
-        {arc.reward.stars > 0 && (
-          <RewardChip icon="⭐" label={`+${toPersian(arc.reward.stars)}`}
+        {(rewards.stars ?? 0) > 0 && (
+          <RewardChip icon="⭐" label={`+${toPersian(rewards.stars!)}`}
             color="#facc15" bg="rgba(250,204,21,0.12)" border="rgba(250,204,21,0.2)" />
         )}
-        {arc.reward.money > 0 && (
-          <RewardChip icon="💰" label={`+${formatMoney(arc.reward.money)}`}
+        {(rewards.money ?? 0) > 0 && (
+          <RewardChip icon="💰" label={`+${formatMoney(rewards.money!)}`}
             color="#4ade80" bg="rgba(74,222,128,0.12)" border="rgba(74,222,128,0.2)" />
         )}
       </div>
 
-      {/* CTA Button */}
       <button
         className={isClaimable ? "btn-bounce anim-claim-pulse" : "btn-bounce"}
-        onClick={() => {
-          if (isClaimable && onClaim) {
-            onClaim(arc.reward);
-          }
-        }}
+        onClick={onClaim}
         style={{
-          width: "100%",
-          padding: "14px 0",
-          borderRadius: 16,
+          width: "100%", padding: "14px 0", borderRadius: 16,
           border: isClaimable
             ? "1.5px solid rgba(250,204,21,0.4)"
             : "1px solid rgba(250,204,21,0.2)",
           background: isClaimable
             ? "linear-gradient(135deg, rgba(250,204,21,0.25), rgba(245,158,11,0.2))"
             : "rgba(250,204,21,0.08)",
-          color: "#facc15",
-          fontSize: 14,
-          fontWeight: 800,
-          fontFamily: "inherit",
-          cursor: "pointer",
+          color: "#facc15", fontSize: 14, fontWeight: 800,
+          fontFamily: "inherit", cursor: "pointer",
           transition: "all 0.2s ease",
           boxShadow: isClaimable ? "0 0 20px rgba(250,204,21,0.15)" : "none",
         }}

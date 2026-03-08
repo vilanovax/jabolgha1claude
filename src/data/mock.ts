@@ -18,6 +18,7 @@ export const player = {
 };
 
 export type MissionStatus = "pending" | "in_progress" | "done" | "claimable";
+export type MissionReward = { xp: number; stars: number; money: number };
 export type JobDifficulty = "آسان" | "متوسط" | "سخت";
 export type GrowthPotential = "پایین" | "متوسط" | "بالا";
 
