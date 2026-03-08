@@ -8,6 +8,7 @@ import HeroActionButton from "@/components/home/HeroActionButton";
 import RoomObjects from "@/components/home/RoomObjects";
 import ActionBottomSheet from "@/components/home/ActionBottomSheet";
 import LeisureButton from "@/components/home/LeisureButton";
+import CityEventBanner from "@/components/home/CityEventBanner";
 import EndOfDaySummary from "@/components/home/EndOfDaySummary";
 import DailyCardModal from "@/components/home/DailyCardModal";
 import BottomNav from "@/components/layout/BottomNav";
@@ -86,16 +87,58 @@ export default function HomePage() {
         paddingRight: 12,
         position: "relative",
         zIndex: 2,
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
       }}>
+        {/* 1. Character */}
         <CharacterStage doneCount={done.length} />
+
+        {/* 2. Hero Mission Card */}
         <StoryBubble />
+
+        {/* 3. Suggested main action */}
         <HeroActionButton done={done} onOpenAction={handleOpenAction} />
+
+        {/* 4. Section label: actions */}
+        <div style={{
+          padding: "0 8px",
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)" }}>
+            امروز چیکار می‌کنی؟
+          </span>
+          <div style={{
+            flex: 1, height: 1,
+            background: "rgba(255,255,255,0.06)",
+          }} />
+        </div>
+
+        {/* 5. Action grid */}
         <RoomObjects done={done} onOpenAction={handleOpenAction} />
 
-        {/* Leisure: do something fun */}
+        {/* 6. Leisure: do something fun */}
         <LeisureButton />
 
-        {/* Quick links */}
+        {/* 7. Section label: city */}
+        <div style={{
+          padding: "0 8px",
+          display: "flex", alignItems: "center", gap: 6,
+          marginTop: 4,
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)" }}>
+            وضعیت شهر
+          </span>
+          <div style={{
+            flex: 1, height: 1,
+            background: "rgba(255,255,255,0.06)",
+          }} />
+        </div>
+
+        {/* 8. City event banner */}
+        <CityEventBanner />
+
+        {/* 9. Quick links (economy) */}
         <QuickLinks />
       </div>
 
@@ -133,56 +176,50 @@ function QuickLinks() {
     living.housingId, living.vehicleId, living.mobilePlanId, living.isOwned,
   );
 
+  const links = [
+    {
+      href: "/bank", emoji: "🏦", label: "بانک",
+      value: formatMoney(checking), color: "#4ade80",
+    },
+    {
+      href: "/living", emoji: "📋", label: "قبوض هفتگی",
+      value: formatMoney(total), color: "#f87171",
+    },
+    {
+      href: "/market", emoji: "🏪", label: "جمعه‌بازار",
+      value: "خرید و فروش", color: "#fbbf24",
+    },
+    {
+      href: "/fridge", emoji: "❄️", label: "یخچال",
+      value: "خوراکی‌ها", color: "#38bdf8",
+    },
+  ];
+
   return (
     <div style={{
-      display: "flex", gap: 8, marginTop: 12,
+      display: "grid",
+      gridTemplateColumns: "repeat(2, 1fr)",
+      gap: 8,
       padding: "0 4px",
     }}>
-      <Link href="/bank" style={{
-        flex: 1, textDecoration: "none",
-        padding: "10px 12px", borderRadius: 16,
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        display: "flex", alignItems: "center", gap: 8,
-      }}>
-        <span style={{ fontSize: 18 }}>🏦</span>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>بانک</div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#4ade80" }}>
-            {formatMoney(checking)}
+      {links.map((link) => (
+        <Link key={link.href} href={link.href} style={{
+          textDecoration: "none",
+          padding: "10px 12px", borderRadius: 16,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          display: "flex", alignItems: "center", gap: 8,
+          transition: "transform 0.15s ease",
+        }}>
+          <span style={{ fontSize: 18 }}>{link.emoji}</span>
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>{link.label}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: link.color }}>
+              {link.value}
+            </div>
           </div>
-        </div>
-      </Link>
-      <Link href="/living" style={{
-        flex: 1, textDecoration: "none",
-        padding: "10px 12px", borderRadius: 16,
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        display: "flex", alignItems: "center", gap: 8,
-      }}>
-        <span style={{ fontSize: 18 }}>📋</span>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>قبوض هفتگی</div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#f87171" }}>
-            {formatMoney(total)}
-          </div>
-        </div>
-      </Link>
-      <Link href="/market" style={{
-        flex: 1, textDecoration: "none",
-        padding: "10px 12px", borderRadius: 16,
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        display: "flex", alignItems: "center", gap: 8,
-      }}>
-        <span style={{ fontSize: 18 }}>🏪</span>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>جمعه‌بازار</div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#fbbf24" }}>
-            خرید و فروش
-          </div>
-        </div>
-      </Link>
+        </Link>
+      ))}
     </div>
   );
 }

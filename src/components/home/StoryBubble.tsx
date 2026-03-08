@@ -10,82 +10,135 @@ export default function StoryBubble() {
     : `${toPersian(arc.progress)} / ${toPersian(arc.target)}`;
 
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "flex-start",
-      gap: 10,
-      padding: "0 8px",
-      marginBottom: 8,
-    }}>
-      {/* Character avatar */}
-      <div style={{
-        width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-        background: "rgba(255,255,255,0.06)",
-        border: "1.5px solid rgba(250,204,21,0.25)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 22,
-        marginTop: 4,
-        boxShadow: "0 0 12px rgba(250,204,21,0.1)",
+    <Link href="/missions" style={{ textDecoration: "none", display: "block" }}>
+      <div className="mission-hero-card" style={{
+        margin: "0 4px 12px",
+        padding: "16px 18px",
+        borderRadius: 22,
+        background: "linear-gradient(135deg, rgba(250,204,21,0.08), rgba(251,191,36,0.03))",
+        border: "1.5px solid rgba(250,204,21,0.15)",
+        position: "relative",
+        overflow: "hidden",
       }}>
-        {arc.character}
-      </div>
-
-      {/* Speech bubble */}
-      <Link href="/missions" style={{ textDecoration: "none", flex: 1, minWidth: 0 }}>
+        {/* Glow overlay */}
         <div style={{
-          position: "relative",
-          background: "rgba(255,255,255,0.07)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: "6px 20px 20px 20px",
-          padding: "12px 14px",
+          position: "absolute", top: 0, right: 0,
+          width: 120, height: 120,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(250,204,21,0.08) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Top row: badge + episode */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: 10,
         }}>
-          {/* Character name + episode */}
-          <div style={{
-            fontSize: 9, fontWeight: 700, color: "#facc15",
-            marginBottom: 4, display: "flex", justifyContent: "space-between",
+          <span style={{
+            fontSize: 9, fontWeight: 800,
+            padding: "3px 10px", borderRadius: 12,
+            background: "linear-gradient(135deg, rgba(250,204,21,0.2), rgba(250,204,21,0.08))",
+            color: "#facc15",
+            border: "1px solid rgba(250,204,21,0.25)",
+            display: "flex", alignItems: "center", gap: 4,
           }}>
-            <span>{arc.characterName}</span>
-            <span style={{ color: "rgba(255,255,255,0.25)" }}>
-              اپیزود {toPersian(arc.episode)}
-            </span>
-          </div>
+            <span className="anim-mission-glow" style={{ fontSize: 12 }}>🎯</span>
+            ماموریت فعال
+          </span>
+          <span style={{
+            fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.25)",
+          }}>
+            اپیزود {toPersian(arc.episode)} از {toPersian(arc.totalEpisodes)}
+          </span>
+        </div>
 
-          {/* Dialogue */}
-          <div style={{
-            fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.7)",
-            lineHeight: 1.5, marginBottom: 8,
+        {/* Character + mission text */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          marginBottom: 12,
+        }}>
+          <div className="anim-breathe" style={{
+            width: 48, height: 48, borderRadius: "50%", flexShrink: 0,
+            background: "rgba(255,255,255,0.06)",
+            border: "2px solid rgba(250,204,21,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 26,
+            boxShadow: "0 0 16px rgba(250,204,21,0.12)",
           }}>
-            «{arc.title}»
+            {arc.character}
           </div>
-
-          {/* Progress row */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              flex: 1, height: 4, borderRadius: 3,
-              background: "rgba(255,255,255,0.08)",
-              overflow: "hidden",
+              fontSize: 10, fontWeight: 700, color: "#facc15",
+              marginBottom: 2,
             }}>
-              <div style={{
-                width: `${progressPct}%`,
-                height: "100%",
-                borderRadius: 3,
-                background: "linear-gradient(90deg, #facc15, #fbbf24)",
-                boxShadow: "0 0 6px rgba(250,204,21,0.3)",
-              }} />
+              {arc.characterName}
             </div>
-            <span style={{
-              fontSize: 9, fontWeight: 700, color: "#facc15",
-              whiteSpace: "nowrap",
+            <div style={{
+              fontSize: 14, fontWeight: 800, color: "rgba(255,255,255,0.8)",
+              lineHeight: 1.4,
             }}>
-              {progressLabel}
-            </span>
+              «{arc.title}»
+            </div>
           </div>
         </div>
-      </Link>
-    </div>
+
+        {/* Progress bar */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <div style={{
+            flex: 1, height: 8, borderRadius: 6,
+            background: "rgba(255,255,255,0.06)",
+            overflow: "hidden",
+          }}>
+            <div className="mission-progress-fill" style={{
+              width: `${progressPct}%`,
+              height: "100%",
+              borderRadius: 6,
+              background: "linear-gradient(90deg, #facc15, #f59e0b)",
+              boxShadow: "0 0 10px rgba(250,204,21,0.4)",
+              transition: "width 0.5s ease",
+            }} />
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 800, color: "#facc15",
+            whiteSpace: "nowrap",
+          }}>
+            {progressLabel}
+          </span>
+        </div>
+
+        {/* Reward preview */}
+        <div style={{
+          display: "flex", gap: 8, marginTop: 10,
+        }}>
+          {arc.reward.xp > 0 && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 8,
+              background: "rgba(192,132,252,0.12)", color: "#c084fc",
+            }}>
+              ✨ {toPersian(arc.reward.xp)} XP
+            </span>
+          )}
+          {arc.reward.stars > 0 && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 8,
+              background: "rgba(250,204,21,0.12)", color: "#facc15",
+            }}>
+              ⭐ {toPersian(arc.reward.stars)}
+            </span>
+          )}
+          {arc.reward.money > 0 && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 8,
+              background: "rgba(74,222,128,0.12)", color: "#4ade80",
+            }}>
+              💰 {formatMoney(arc.reward.money)}
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
   );
 }

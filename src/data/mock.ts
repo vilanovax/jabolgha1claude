@@ -964,6 +964,7 @@ export function toPersian(input: string | number): string {
 }
 
 export function formatMoney(n: number): string {
+  if (n == null) return "۰";
   if (n >= 1_000_000_000) return toPersian((n / 1_000_000_000).toFixed(1)) + "B";
   if (n >= 1_000_000) return toPersian((n / 1_000_000).toFixed(1)) + "M";
   if (n >= 1_000) return toPersian((n / 1_000).toFixed(0)) + "K";

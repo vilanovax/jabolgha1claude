@@ -6,16 +6,33 @@ interface Props {
   onEndDay: () => void;
 }
 
+const DAY_PHASES = [
+  { key: "morning", emoji: "🌅", label: "صبح", color: "#fbbf24", bg: "rgba(251,191,36,0.10)" },
+  { key: "noon", emoji: "☀️", label: "ظهر", color: "#fb923c", bg: "rgba(251,146,60,0.10)" },
+  { key: "evening", emoji: "🌇", label: "عصر", color: "#f97316", bg: "rgba(249,115,22,0.10)" },
+  { key: "night", emoji: "🌙", label: "شب", color: "#818cf8", bg: "rgba(129,140,248,0.10)" },
+] as const;
+
+function getPhase(actionsCount: number) {
+  if (actionsCount <= 1) return DAY_PHASES[0];
+  if (actionsCount <= 3) return DAY_PHASES[1];
+  if (actionsCount <= 5) return DAY_PHASES[2];
+  return DAY_PHASES[3];
+}
+
 export default function GameHUD({ onEndDay }: Props) {
   const player = useGameStore((s) => s.player);
   const bank = useGameStore((s) => s.bank);
+  const actionsCount = useGameStore((s) => s.actionsCompletedToday.length);
+
+  const phase = getPhase(actionsCount);
 
   const stats = [
-    { icon: "⭐", value: toPersian(player.stars), color: "#facc15" },
-    { icon: "✨", value: toPersian(player.xp), color: "#c084fc" },
-    { icon: "💰", value: formatMoney(bank.checking + bank.savings), color: "#4ade80" },
-    { icon: "⚡", value: toPersian(player.energy), color: "#fb923c" },
-    { icon: "🍔", value: toPersian(player.hunger), color: "#f87171" },
+    { icon: "⭐", value: toPersian(player.stars), color: "#facc15", warn: false },
+    { icon: "✨", value: toPersian(player.xp), color: "#c084fc", warn: false },
+    { icon: "💰", value: formatMoney(bank.checking + bank.savings), color: "#4ade80", warn: bank.checking < 5_000_000 },
+    { icon: "⚡", value: toPersian(player.energy), color: "#fb923c", warn: player.energy < 30 },
+    { icon: "🍔", value: toPersian(player.hunger), color: "#f87171", warn: player.hunger < 30 },
   ];
 
   return (
@@ -39,16 +56,31 @@ export default function GameHUD({ onEndDay }: Props) {
         border: "1px solid rgba(255,255,255,0.08)",
         pointerEvents: "auto",
       }}>
-        {/* Row 1: Day + Level + End Day button */}
+        {/* Row 1: Day + Phase + Level + End Day */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           marginBottom: 8,
         }}>
-          <span style={{
-            fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)",
-          }}>
-            روز {toPersian(player.dayInGame)}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)",
+            }}>
+              روز {toPersian(player.dayInGame)}
+            </span>
+            {/* Phase badge */}
+            <span className="phase-badge" style={{
+              fontSize: 9, fontWeight: 800,
+              padding: "2px 8px", borderRadius: 10,
+              background: phase.bg,
+              color: phase.color,
+              border: `1px solid ${phase.color}33`,
+              display: "flex", alignItems: "center", gap: 3,
+            }}>
+              <span style={{ fontSize: 11 }}>{phase.emoji}</span>
+              {phase.label}
+            </span>
+          </div>
+
           <button
             onClick={onEndDay}
             style={{
@@ -63,6 +95,7 @@ export default function GameHUD({ onEndDay }: Props) {
           >
             پایان روز 🌙
           </button>
+
           <span style={{
             fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)",
           }}>
@@ -75,7 +108,7 @@ export default function GameHUD({ onEndDay }: Props) {
           display: "flex", justifyContent: "space-between", gap: 2,
         }}>
           {stats.map((s) => (
-            <div key={s.icon} style={{
+            <div key={s.icon} className={s.warn ? "stat-warn-pulse" : ""} style={{
               display: "flex", alignItems: "center", gap: 3,
             }}>
               <span style={{ fontSize: 11 }}>{s.icon}</span>

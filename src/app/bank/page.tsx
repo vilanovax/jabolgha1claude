@@ -192,11 +192,11 @@ export default function BankPage() {
               <span style={{ fontSize: 15, fontWeight: 800, color: "#1e293b" }}>وام‌های فعال ({toPersian(bank.loans.length)})</span>
             </div>
 
-            {bank.loans.map((loan) => {
-              const paidCount = loan.totalInstallments - loan.remainingInstallments;
-              const progress = (paidCount / loan.totalInstallments) * 100;
+            {bank.loans.map((loan, idx) => {
+              const paidCount = (loan.totalInstallments ?? 1) - (loan.remainingInstallments ?? 0);
+              const progress = (paidCount / (loan.totalInstallments ?? 1)) * 100;
               return (
-                <div key={loan.id} className="activity-card activity-card--work" style={{ marginBottom: 10 }}>
+                <div key={loan.id ?? idx} className="activity-card activity-card--work" style={{ marginBottom: 10 }}>
                   <div style={{ padding: "16px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{loan.typeName}</div>
