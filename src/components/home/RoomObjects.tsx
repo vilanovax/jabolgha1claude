@@ -1,16 +1,24 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useGameStore } from "@/stores/gameStore";
-import { fridgeItems, toPersian } from "@/data/mock";
+import { toPersian } from "@/data/mock";
+import { FRIDGE_TIERS } from "@/data/fridgeData";
+
+interface RoomState {
+  energy: number;
+  activeCourseDay?: number;
+  fridgeCount: number;
+  fridgeSlots: number;
+}
 
 interface RoomObject {
   id: string;
   emoji: string;
   label: string;
-  getStatus: (done: string[], state: { energy: number; activeCourseDay?: number }) => string;
+  getStatus: (done: string[], state: RoomState) => string;
   actionCategory: string;
   glowColor: string;
-  navigateTo?: string; // if set, navigate instead of opening action sheet
+  navigateTo?: string;
 }
 
 const OBJECTS: RoomObject[] = [
@@ -60,7 +68,7 @@ const OBJECTS: RoomObject[] = [
     id: "fridge",
     emoji: "🍳",
     label: "یخچال",
-    getStatus: () => `${toPersian(fridgeItems.length)} آیتم`,
+    getStatus: (_done, state) => `${toPersian(state.fridgeCount)}/${toPersian(state.fridgeSlots)}`,
     actionCategory: "fridge",
     glowColor: "rgba(249,115,22,0.3)",
     navigateTo: "/fridge",
@@ -77,10 +85,15 @@ export default function RoomObjects({
   const router = useRouter();
   const energy = useGameStore((s) => s.player.energy);
   const activeCourse = useGameStore((s) => s.activeCourse);
+  const fridge = useGameStore((s) => s.fridge);
 
-  const stateInfo = {
+  const currentTier = FRIDGE_TIERS.find((t) => t.id === fridge.tierId);
+
+  const stateInfo: RoomState = {
     energy,
     activeCourseDay: activeCourse?.currentDay,
+    fridgeCount: fridge.items.length,
+    fridgeSlots: currentTier?.slots ?? 4,
   };
 
   return (

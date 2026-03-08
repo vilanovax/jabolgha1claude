@@ -14,7 +14,7 @@ const tabs = [
 
 export default function BottomNav() {
   const path = usePathname();
-  const homeRoutes = ["/", "/fridge", "/skills", "/bank"];
+  const homeRoutes = ["/", "/fridge", "/skills", "/bank", "/living", "/market"];
   const activeTab = homeRoutes.includes(path) ? "/" : path;
   const stats = getMissionStats();
   const hasMissionBadge = stats.claimableCount > 0 || stats.activeCount > 0;

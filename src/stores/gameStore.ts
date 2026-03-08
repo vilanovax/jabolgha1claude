@@ -19,6 +19,13 @@ import type { ActiveLoan } from "@/data/loanTypes";
 import { drawRandomCard } from "@/data/dailyCards";
 import type { DailyCard } from "@/data/dailyCards";
 import { COURSE_CATALOG } from "@/data/mock";
+import { FOOD_CATALOG, FRIDGE_TIERS } from "@/data/fridgeData";
+import type { FridgeSlot } from "@/data/fridgeData";
+import { HOUSING_TIERS, VEHICLE_TIERS, MOBILE_PLANS, calculateWeeklyBills } from "@/data/livingCosts";
+import { MARKET_ITEMS, generateNpcListings } from "@/data/marketplaceData";
+import type { MarketListing } from "@/data/marketplaceData";
+import { LEISURE_ACTIVITIES } from "@/data/leisureData";
+import type { LeisureActivity } from "@/data/leisureData";
 
 export interface ActiveCourseState {
   courseId: string;
@@ -146,6 +153,25 @@ interface GameState {
   cardHistory: { dayInGame: number; cardId: string }[];
   cardShielded: boolean;             // was savings shield active for today's card?
 
+  // Fridge state
+  fridge: {
+    tierId: string;
+    items: FridgeSlot[];
+  };
+
+  // Living costs state
+  living: {
+    housingId: string;
+    isOwned: boolean;
+    vehicleId: string;
+    mobilePlanId: string;
+    lastBillDay: number;       // last day bills were paid
+  };
+
+  // Marketplace state
+  inventory: string[];               // owned MarketItem IDs
+  marketListings: MarketListing[];    // NPC + player listings
+
   // Actions
   tick: () => void;
   setRunning: (v: boolean) => void;
@@ -162,6 +188,22 @@ interface GameState {
   withdrawFromSavings: (amount: number) => { success: boolean; reason?: string };
   takeLoan: (loanTypeId: string) => { success: boolean; reason?: string };
   payLoanInstallment: (loanId: string) => { success: boolean; reason?: string };
+  // Living costs
+  upgradeHousing: (tierId: string, buy: boolean) => { success: boolean; reason?: string };
+  upgradeVehicle: (tierId: string) => { success: boolean; reason?: string };
+  changeMobilePlan: (planId: string) => { success: boolean; reason?: string };
+  // Fridge
+  buyFood: (foodId: string) => { success: boolean; reason?: string };
+  eatFood: (slotIndex: number) => { success: boolean; effects?: { energy: number; happiness: number; health: number }; reason?: string };
+  trashFood: (slotIndex: number) => void;
+  upgradeFridge: (tierId: string) => { success: boolean; reason?: string };
+  clearExpiredItems: () => { expiredNames: string[] };
+  // Marketplace
+  buyFromMarket: (itemId: string) => { success: boolean; reason?: string };
+  sellToSystem: (itemId: string) => { success: boolean; reason?: string };
+  buyFromListing: (listingId: string) => { success: boolean; reason?: string };
+  // Leisure (یه کاری کن)
+  doRandomLeisure: () => { success: boolean; activity?: LeisureActivity; reason?: string; ateFoodName?: string };
   // Day transition
   startNextDay: () => void;
 }
@@ -200,6 +242,22 @@ export const useGameStore = create<GameState>()(
       todayCard: null,
       cardHistory: [],
       cardShielded: false,
+
+      // Fridge initial state
+      fridge: { tierId: "basic", items: [] },
+
+      // Living costs initial state
+      living: {
+        housingId: "apartment_basic",
+        isOwned: false,
+        vehicleId: "none",
+        mobilePlanId: "basic",
+        lastBillDay: 0,
+      },
+
+      // Marketplace initial state
+      inventory: [],
+      marketListings: [],
 
       setRunning: (v) => set({ isRunning: v }),
 
@@ -294,6 +352,46 @@ export const useGameStore = create<GameState>()(
             }
           }
 
+          // ─── Weekly bills ───
+          let newLiving = { ...state.living };
+          const daysSinceLastBill = newPlayer.dayInGame - newLiving.lastBillDay;
+          if (daysSinceLastBill >= 7) {
+            const { total } = calculateWeeklyBills(
+              newLiving.housingId, newLiving.vehicleId,
+              newLiving.mobilePlanId, newLiving.isOwned,
+            );
+            if (newBank.checking >= total) {
+              newBank.checking -= total;
+            } else {
+              // Can't pay bills: deduct what we can, happiness penalty
+              newBank.checking = 0;
+              newPlayer.happiness = Math.max(0, newPlayer.happiness - 15);
+            }
+            newLiving = { ...newLiving, lastBillDay: newPlayer.dayInGame };
+          }
+
+          // ─── Marketplace: refresh NPC listings ───
+          const newListings = generateNpcListings(newPlayer.dayInGame, 3);
+
+          // ─── Inventory: apply passive bonuses ───
+          for (const ownedId of state.inventory) {
+            const item = MARKET_ITEMS.find((m) => m.id === ownedId);
+            if (item?.passiveBonus) {
+              if (item.passiveBonus.energy) newPlayer.energy = Math.min(100, newPlayer.energy + item.passiveBonus.energy);
+              if (item.passiveBonus.happiness) newPlayer.happiness = Math.min(100, newPlayer.happiness + item.passiveBonus.happiness);
+              if (item.passiveBonus.health) newPlayer.health = Math.max(0, Math.min(100, (newPlayer.health ?? 80) + (item.passiveBonus.health ?? 0)));
+            }
+          }
+
+          // ─── Fridge: expire items ───
+          const newFridgeItems = state.fridge.items.filter(
+            (slot) => newPlayer.dayInGame <= slot.expiresOnDay,
+          );
+          const expiredCount = state.fridge.items.length - newFridgeItems.length;
+          if (expiredCount > 0) {
+            newPlayer.happiness = Math.max(0, newPlayer.happiness - expiredCount * 2);
+          }
+
           return {
             player: newPlayer,
             bank: newBank,
@@ -302,6 +400,9 @@ export const useGameStore = create<GameState>()(
             cardHistory: [...state.cardHistory, { dayInGame: newPlayer.dayInGame, cardId: card.id }],
             actionsCompletedToday: [],
             activeCourse: newActiveCourse,
+            fridge: { ...state.fridge, items: newFridgeItems },
+            living: newLiving,
+            marketListings: newListings,
           };
         });
       },
@@ -530,6 +631,333 @@ export const useGameStore = create<GameState>()(
         };
       },
 
+      // ─── Living Cost Actions ────────────────
+
+      upgradeHousing: (tierId, buy) => {
+        const state = get();
+        const newTier = HOUSING_TIERS.find((h) => h.id === tierId);
+        if (!newTier) return { success: false, reason: "نوع مسکن نامعتبر" };
+        if (state.player.level < newTier.requiredLevel) {
+          return { success: false, reason: `سطح ${newTier.requiredLevel} لازمه` };
+        }
+
+        const currentHousing = HOUSING_TIERS.find((h) => h.id === state.living.housingId);
+        let cost: number;
+
+        if (buy) {
+          if (newTier.purchasePrice === 0) return { success: false, reason: "این مسکن قابل خرید نیست" };
+          // Sell current if owned
+          const saleCredit = state.living.isOwned && currentHousing ? currentHousing.resaleValue : 0;
+          cost = newTier.purchasePrice - saleCredit;
+        } else {
+          // Just switching rental — no upfront cost beyond first month
+          cost = 0; // rent is handled in weekly bills
+        }
+
+        if (cost > 0 && state.bank.checking < cost) {
+          return { success: false, reason: "موجودی کافی نیست! 💰" };
+        }
+
+        const newBank = cost > 0 ? { ...state.bank, checking: state.bank.checking - cost } : state.bank;
+        set({
+          bank: newBank,
+          living: { ...state.living, housingId: tierId, isOwned: buy },
+        });
+        return { success: true };
+      },
+
+      upgradeVehicle: (tierId) => {
+        const state = get();
+        const newTier = VEHICLE_TIERS.find((v) => v.id === tierId);
+        if (!newTier) return { success: false, reason: "نوع خودرو نامعتبر" };
+        if (state.player.level < newTier.requiredLevel) {
+          return { success: false, reason: `سطح ${newTier.requiredLevel} لازمه` };
+        }
+
+        const currentVehicle = VEHICLE_TIERS.find((v) => v.id === state.living.vehicleId);
+        const saleCredit = currentVehicle ? currentVehicle.resaleValue : 0;
+        const cost = newTier.purchasePrice - saleCredit;
+
+        if (cost > 0 && state.bank.checking < cost) {
+          return { success: false, reason: "موجودی کافی نیست! 💰" };
+        }
+
+        set({
+          bank: { ...state.bank, checking: state.bank.checking - cost },
+          living: { ...state.living, vehicleId: tierId },
+        });
+        return { success: true };
+      },
+
+      changeMobilePlan: (planId) => {
+        const plan = MOBILE_PLANS.find((p) => p.id === planId);
+        if (!plan) return { success: false, reason: "پلن نامعتبر" };
+        set((state) => ({
+          living: { ...state.living, mobilePlanId: planId },
+        }));
+        return { success: true };
+      },
+
+      // ─── Fridge Actions ──────────────────────
+
+      buyFood: (foodId) => {
+        const state = get();
+        const food = FOOD_CATALOG.find((f) => f.id === foodId);
+        if (!food) return { success: false, reason: "آیتم نامعتبر" };
+
+        const tier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId)!;
+        if (state.fridge.items.length >= tier.slots) {
+          return { success: false, reason: `یخچال پره! (${tier.slots}/${tier.slots})` };
+        }
+        if (state.bank.checking < food.price) {
+          return { success: false, reason: "موجودی کافی نیست! 💰" };
+        }
+
+        const slot: FridgeSlot = {
+          foodId,
+          addedOnDay: state.player.dayInGame,
+          expiresOnDay: state.player.dayInGame + food.baseShelfLife + tier.shelfLifeBonus,
+        };
+
+        set({
+          bank: { ...state.bank, checking: state.bank.checking - food.price },
+          fridge: { ...state.fridge, items: [...state.fridge.items, slot] },
+        });
+        return { success: true };
+      },
+
+      eatFood: (slotIndex) => {
+        const state = get();
+        const slot = state.fridge.items[slotIndex];
+        if (!slot) return { success: false, reason: "آیتم یافت نشد" };
+
+        const food = FOOD_CATALOG.find((f) => f.id === slot.foodId);
+        if (!food) return { success: false, reason: "آیتم نامعتبر" };
+
+        if (state.player.dayInGame > slot.expiresOnDay) {
+          // Expired — auto-trash
+          const newItems = state.fridge.items.filter((_, i) => i !== slotIndex);
+          set({ fridge: { ...state.fridge, items: newItems } });
+          return { success: false, reason: "تاریخ مصرف گذشته! دور انداخته شد 🗑️" };
+        }
+
+        const newPlayer = { ...state.player };
+        newPlayer.energy = Math.min(100, newPlayer.energy + food.effects.energy);
+        newPlayer.happiness = Math.min(100, newPlayer.happiness + food.effects.happiness);
+        newPlayer.health = Math.max(0, Math.min(100, (newPlayer.health ?? 80) + food.effects.health));
+
+        const newItems = state.fridge.items.filter((_, i) => i !== slotIndex);
+        set({ player: newPlayer, fridge: { ...state.fridge, items: newItems } });
+        return { success: true, effects: food.effects };
+      },
+
+      trashFood: (slotIndex) => {
+        const state = get();
+        const newItems = state.fridge.items.filter((_, i) => i !== slotIndex);
+        set({ fridge: { ...state.fridge, items: newItems } });
+      },
+
+      upgradeFridge: (tierId) => {
+        const state = get();
+        const newTier = FRIDGE_TIERS.find((t) => t.id === tierId);
+        if (!newTier) return { success: false, reason: "مدل یخچال نامعتبر" };
+
+        const currentTier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId)!;
+        if (newTier.slots <= currentTier.slots) {
+          return { success: false, reason: "این یخچال ارتقا نیست!" };
+        }
+        if (state.player.level < newTier.requiredLevel) {
+          return { success: false, reason: `سطح ${newTier.requiredLevel} لازمه` };
+        }
+
+        const netCost = newTier.price - currentTier.resaleValue;
+        if (state.bank.checking < netCost) {
+          return { success: false, reason: "موجودی کافی نیست! 💰" };
+        }
+
+        // Extend expiry on existing items
+        const bonusDiff = newTier.shelfLifeBonus - currentTier.shelfLifeBonus;
+        const updatedItems = state.fridge.items.map((slot) => ({
+          ...slot,
+          expiresOnDay: slot.expiresOnDay + bonusDiff,
+        }));
+
+        set({
+          bank: { ...state.bank, checking: state.bank.checking - netCost },
+          fridge: { tierId, items: updatedItems },
+        });
+        return { success: true };
+      },
+
+      // ─── Marketplace Actions ─────────────────
+
+      buyFromMarket: (itemId) => {
+        const state = get();
+        const item = MARKET_ITEMS.find((m) => m.id === itemId);
+        if (!item) return { success: false, reason: "آیتم نامعتبر" };
+        if (state.player.level < item.requiredLevel) {
+          return { success: false, reason: `سطح ${item.requiredLevel} لازمه` };
+        }
+        if (state.bank.checking < item.price) {
+          return { success: false, reason: "موجودی کافی نیست! 💰" };
+        }
+
+        // If it's a fridge, use the fridge upgrade system
+        if (item.upgradeLink?.system === "fridge") {
+          const result = get().upgradeFridge(item.upgradeLink.tierId);
+          return result;
+        }
+
+        // Check if already owned (for unique items)
+        if (state.inventory.includes(itemId)) {
+          return { success: false, reason: "قبلاً داری!" };
+        }
+
+        set({
+          bank: { ...state.bank, checking: state.bank.checking - item.price },
+          inventory: [...state.inventory, itemId],
+        });
+        return { success: true };
+      },
+
+      sellToSystem: (itemId) => {
+        const state = get();
+        const item = MARKET_ITEMS.find((m) => m.id === itemId);
+        if (!item) return { success: false, reason: "آیتم نامعتبر" };
+        if (!state.inventory.includes(itemId)) {
+          return { success: false, reason: "این آیتم رو نداری!" };
+        }
+
+        set({
+          bank: { ...state.bank, checking: state.bank.checking + item.resaleValue },
+          inventory: state.inventory.filter((id) => id !== itemId),
+        });
+        return { success: true };
+      },
+
+      buyFromListing: (listingId) => {
+        const state = get();
+        const listing = state.marketListings.find((l) => l.id === listingId);
+        if (!listing) return { success: false, reason: "آگهی پیدا نشد" };
+
+        const item = MARKET_ITEMS.find((m) => m.id === listing.itemId);
+        if (!item) return { success: false, reason: "آیتم نامعتبر" };
+
+        if (state.bank.checking < listing.askingPrice) {
+          return { success: false, reason: "موجودی کافی نیست! 💰" };
+        }
+
+        // If it's a fridge, handle upgrade
+        if (item.upgradeLink?.system === "fridge") {
+          const currentTier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId)!;
+          const newTier = FRIDGE_TIERS.find((t) => t.id === item.upgradeLink!.tierId);
+          if (!newTier) return { success: false, reason: "مدل یخچال نامعتبر" };
+          if (newTier.slots <= currentTier.slots) {
+            return { success: false, reason: "این یخچال ارتقا نیست!" };
+          }
+
+          const bonusDiff = newTier.shelfLifeBonus - currentTier.shelfLifeBonus;
+          const updatedItems = state.fridge.items.map((slot) => ({
+            ...slot,
+            expiresOnDay: slot.expiresOnDay + bonusDiff,
+          }));
+
+          set({
+            bank: { ...state.bank, checking: state.bank.checking - listing.askingPrice },
+            fridge: { tierId: newTier.id, items: updatedItems },
+            marketListings: state.marketListings.filter((l) => l.id !== listingId),
+          });
+          return { success: true };
+        }
+
+        // Regular item
+        if (state.inventory.includes(listing.itemId)) {
+          return { success: false, reason: "قبلاً داری!" };
+        }
+
+        set({
+          bank: { ...state.bank, checking: state.bank.checking - listing.askingPrice },
+          inventory: [...state.inventory, listing.itemId],
+          marketListings: state.marketListings.filter((l) => l.id !== listingId),
+        });
+        return { success: true };
+      },
+
+      doRandomLeisure: () => {
+        const state = get();
+        const hasFridgeFood = state.fridge.items.length > 0;
+
+        // Filter available activities
+        const available = LEISURE_ACTIVITIES.filter((act) => {
+          if (act.requires?.inventoryAny) {
+            if (!act.requires.inventoryAny.some((id) => state.inventory.includes(id))) return false;
+          }
+          if (act.requires?.hasFridgeFood && !hasFridgeFood) return false;
+          return true;
+        });
+
+        if (available.length === 0) {
+          return { success: false, reason: "هیچ تفریحی در دسترس نیست!" };
+        }
+
+        // Random pick
+        const activity = available[Math.floor(Math.random() * available.length)];
+        const newPlayer = { ...state.player };
+        let ateFoodName: string | undefined;
+
+        // Apply effects
+        if (activity.effects.energy) newPlayer.energy = clamp(newPlayer.energy + activity.effects.energy, 0, 100);
+        if (activity.effects.happiness) newPlayer.happiness = clamp(newPlayer.happiness + activity.effects.happiness, 0, 100);
+        if (activity.effects.health) newPlayer.health = clamp((newPlayer.health ?? 80) + activity.effects.health, 0, 100);
+
+        // If activity requires food, consume a random fridge item
+        let newFridgeItems = state.fridge.items;
+        if (activity.requires?.hasFridgeFood && state.fridge.items.length > 0) {
+          const idx = Math.floor(Math.random() * state.fridge.items.length);
+          const slot = state.fridge.items[idx];
+          const food = FOOD_CATALOG.find((f) => f.id === slot.foodId);
+          ateFoodName = food?.name;
+          // Apply food effects too
+          if (food) {
+            newPlayer.energy = clamp(newPlayer.energy + food.effects.energy, 0, 100);
+            newPlayer.happiness = clamp(newPlayer.happiness + food.effects.happiness, 0, 100);
+            newPlayer.health = clamp((newPlayer.health ?? 80) + food.effects.health, 0, 100);
+          }
+          newFridgeItems = state.fridge.items.filter((_, i) => i !== idx);
+        }
+
+        set({
+          player: newPlayer,
+          fridge: { ...state.fridge, items: newFridgeItems },
+        });
+        return { success: true, activity, ateFoodName };
+      },
+
+      clearExpiredItems: () => {
+        const state = get();
+        const expired = state.fridge.items.filter(
+          (slot) => state.player.dayInGame > slot.expiresOnDay,
+        );
+        if (expired.length === 0) return { expiredNames: [] };
+
+        const expiredNames = expired.map((slot) => {
+          const food = FOOD_CATALOG.find((f) => f.id === slot.foodId);
+          return food ? food.name : slot.foodId;
+        });
+
+        const remaining = state.fridge.items.filter(
+          (slot) => state.player.dayInGame <= slot.expiresOnDay,
+        );
+        const newPlayer = { ...state.player };
+        newPlayer.happiness = Math.max(0, newPlayer.happiness - expired.length * 2);
+
+        set({
+          fridge: { ...state.fridge, items: remaining },
+          player: newPlayer,
+        });
+        return { expiredNames };
+      },
+
       // ─── Banking Actions ─────────────────────
 
       depositToSavings: (amount) => {
@@ -727,6 +1155,10 @@ export const useGameStore = create<GameState>()(
           todayCard: null,
           cardHistory: [],
           cardShielded: false,
+          fridge: { tierId: "basic", items: [] },
+          living: { housingId: "apartment_basic", isOwned: false, vehicleId: "none", mobilePlanId: "basic", lastBillDay: 0 },
+          inventory: [],
+          marketListings: [],
         });
       },
     }),
@@ -747,6 +1179,10 @@ export const useGameStore = create<GameState>()(
         todayCard: state.todayCard,
         cardHistory: state.cardHistory,
         cardShielded: state.cardShielded,
+        fridge: state.fridge,
+        living: state.living,
+        inventory: state.inventory,
+        marketListings: state.marketListings,
       }),
     },
   ),

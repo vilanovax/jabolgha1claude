@@ -6,6 +6,7 @@ export const player = {
   energy: 68,
   hunger: 55,
   happiness: 72,
+  health: 80,
   security: 58,
   money: 12_500_000,
   savings: 50_000_000,

@@ -1,15 +1,19 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import GameHUD from "@/components/home/GameHUD";
 import CharacterStage from "@/components/home/CharacterStage";
 import StoryBubble from "@/components/home/StoryBubble";
 import HeroActionButton from "@/components/home/HeroActionButton";
 import RoomObjects from "@/components/home/RoomObjects";
 import ActionBottomSheet from "@/components/home/ActionBottomSheet";
+import LeisureButton from "@/components/home/LeisureButton";
 import EndOfDaySummary from "@/components/home/EndOfDaySummary";
 import DailyCardModal from "@/components/home/DailyCardModal";
 import BottomNav from "@/components/layout/BottomNav";
 import { useGameStore } from "@/stores/gameStore";
+import { formatMoney } from "@/data/mock";
+import { calculateWeeklyBills } from "@/data/livingCosts";
 
 export default function HomePage() {
   const [done, setDone] = useState<string[]>([]);
@@ -87,6 +91,12 @@ export default function HomePage() {
         <StoryBubble />
         <HeroActionButton done={done} onOpenAction={handleOpenAction} />
         <RoomObjects done={done} onOpenAction={handleOpenAction} />
+
+        {/* Leisure: do something fun */}
+        <LeisureButton />
+
+        {/* Quick links */}
+        <QuickLinks />
       </div>
 
       {/* Action Bottom Sheet */}
@@ -112,6 +122,67 @@ export default function HomePage() {
       )}
 
       <BottomNav />
+    </div>
+  );
+}
+
+function QuickLinks() {
+  const living = useGameStore((s) => s.living);
+  const checking = useGameStore((s) => s.bank.checking);
+  const { total } = calculateWeeklyBills(
+    living.housingId, living.vehicleId, living.mobilePlanId, living.isOwned,
+  );
+
+  return (
+    <div style={{
+      display: "flex", gap: 8, marginTop: 12,
+      padding: "0 4px",
+    }}>
+      <Link href="/bank" style={{
+        flex: 1, textDecoration: "none",
+        padding: "10px 12px", borderRadius: 16,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{ fontSize: 18 }}>🏦</span>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>بانک</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#4ade80" }}>
+            {formatMoney(checking)}
+          </div>
+        </div>
+      </Link>
+      <Link href="/living" style={{
+        flex: 1, textDecoration: "none",
+        padding: "10px 12px", borderRadius: 16,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{ fontSize: 18 }}>📋</span>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>قبوض هفتگی</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#f87171" }}>
+            {formatMoney(total)}
+          </div>
+        </div>
+      </Link>
+      <Link href="/market" style={{
+        flex: 1, textDecoration: "none",
+        padding: "10px 12px", borderRadius: 16,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{ fontSize: 18 }}>🏪</span>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>جمعه‌بازار</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#fbbf24" }}>
+            خرید و فروش
+          </div>
+        </div>
+      </Link>
     </div>
   );
 }
