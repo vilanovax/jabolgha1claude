@@ -451,6 +451,10 @@ export const useGameStore = create<GameState>()(
           },
         });
 
+        // ─── Advance City Simulation ───
+        const { useCityStore } = require("@/game/city/city-store") as typeof import("@/game/city/city-store");
+        useCityStore.getState().advanceDay(gs.player.dayInGame);
+
         // Refresh achievements
         missionStore.refreshAchievements({
           totalMoneyEarned: missionStore.cumulativeStats.totalMoneyEarned,

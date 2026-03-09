@@ -7,6 +7,8 @@ import EconomicWave from "@/components/city/EconomicWave";
 import EventCard from "@/components/city/EventCard";
 import LimitedOpportunity from "@/components/city/LimitedOpportunity";
 import MarketAnalysis from "@/components/city/MarketAnalysis";
+import SectorGrid from "@/components/city/SectorGrid";
+import CityEventsList from "@/components/city/CityEventsList";
 import { useGameStore } from "@/stores/gameStore";
 import { formatMoney, toPersian } from "@/data/mock";
 import type { ActiveEvent } from "@/engine/types";
@@ -93,18 +95,31 @@ export default function CityPage() {
         {/* Tab 0: Events */}
         {tab === 0 && (
           <>
-            {/* Economic Wave */}
+            {/* City Sector Grid */}
+            <SectorGrid />
+
+            {/* City Events (new simulation engine) */}
+            <CityEventsList />
+
+            {/* Economic Wave (legacy tick-based) */}
+            <div style={{
+              fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.4)",
+              margin: "14px 0 8px",
+              display: "flex", alignItems: "center", gap: 6,
+            }}>
+              <span>📡</span> موج اقتصادی (سیستم قدیمی)
+            </div>
             <EconomicWave />
 
-            {/* Critical / Important Events */}
+            {/* Critical / Important Events (legacy engine) */}
             {criticalEvents.length > 0 && (
               <>
                 <div style={{
-                  fontSize: 14, fontWeight: 800, color: "#1e293b",
+                  fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.4)",
                   display: "flex", alignItems: "center", gap: 6,
-                  marginBottom: 10, padding: "0 2px",
+                  marginBottom: 8,
                 }}>
-                  <span style={{ fontSize: 16 }}>⚡</span> رویدادهای بحرانی
+                  <span>⚡</span> رویدادهای بحرانی (سیستم قدیمی)
                 </div>
                 {criticalEvents.map((ev) => (
                   <EventCard key={ev.id} event={ev} />
@@ -112,47 +127,21 @@ export default function CityPage() {
               </>
             )}
 
-            {/* Other Events */}
-            {otherEvents.length > 0 && (
+            {/* Limited Opportunities */}
+            {cityOpportunities.length > 0 && (
               <>
                 <div style={{
-                  fontSize: 14, fontWeight: 800, color: "#1e293b",
+                  fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.4)",
                   display: "flex", alignItems: "center", gap: 6,
-                  marginBottom: 10, padding: "0 2px",
+                  marginTop: 6, marginBottom: 8,
                 }}>
-                  <span style={{ fontSize: 16 }}>📢</span> سایر رویدادها
+                  <span>🔥</span> فرصت‌های محدود امروز
                 </div>
-                {otherEvents.map((ev) => (
-                  <EventCard key={ev.id} event={ev} />
+                {cityOpportunities.map((op) => (
+                  <LimitedOpportunity key={op.id} opportunity={op} />
                 ))}
               </>
             )}
-
-            {/* Empty state for events */}
-            {displayEvents.length === 0 && (
-              <div style={{
-                textAlign: "center", padding: "30px 20px",
-                color: "#94a3b8", fontSize: 12,
-                background: "rgba(255,255,255,0.02)",
-                borderRadius: 16, border: "1px solid rgba(0,0,0,0.04)",
-                marginBottom: 14,
-              }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
-                در حال بررسی وضعیت اقتصادی شهر...
-              </div>
-            )}
-
-            {/* Limited Opportunities */}
-            <div style={{
-              fontSize: 14, fontWeight: 800, color: "#1e293b",
-              display: "flex", alignItems: "center", gap: 6,
-              marginTop: 6, marginBottom: 10, padding: "0 2px",
-            }}>
-              <span style={{ fontSize: 16 }}>🔥</span> فرصت‌های محدود امروز
-            </div>
-            {cityOpportunities.map((op) => (
-              <LimitedOpportunity key={op.id} opportunity={op} />
-            ))}
           </>
         )}
 
