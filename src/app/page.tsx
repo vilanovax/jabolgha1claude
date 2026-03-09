@@ -13,7 +13,9 @@ import EndOfDaySummary from "@/components/home/EndOfDaySummary";
 import DailyCardModal from "@/components/home/DailyCardModal";
 import BottomNav from "@/components/layout/BottomNav";
 import { useGameStore } from "@/stores/gameStore";
-import { formatMoney } from "@/data/mock";
+import { useMissionStore } from "@/game/missions/store";
+import { getMissionProgressPercent } from "@/game/missions/progress";
+import { formatMoney, toPersian } from "@/data/mock";
 import { calculateWeeklyBills } from "@/data/livingCosts";
 
 export default function HomePage() {
@@ -95,7 +97,7 @@ export default function HomePage() {
         <CharacterStage doneCount={done.length} />
 
         {/* 2. Hero Mission Card */}
-        <StoryBubble />
+        <RecommendedMissionBanner />
 
         {/* 3. Suggested main action */}
         <HeroActionButton done={done} onOpenAction={handleOpenAction} />
@@ -166,6 +168,96 @@ export default function HomePage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+function RecommendedMissionBanner() {
+  const getRecommended = useMissionStore((s) => s.getRecommendedMission);
+  const mission = getRecommended();
+
+  // Fallback to old StoryBubble if no mission engine data yet
+  if (!mission) return <StoryBubble />;
+
+  const progressPct = getMissionProgressPercent(mission);
+  const isCompleted = mission.status === "completed";
+
+  const categoryColors: Record<string, { color: string; bg: string; border: string }> = {
+    story:   { color: "#c084fc", bg: "rgba(168,85,247,0.1)", border: "rgba(168,85,247,0.2)" },
+    daily:   { color: "#4ade80", bg: "rgba(74,222,128,0.1)", border: "rgba(74,222,128,0.15)" },
+    rescue:  { color: "#fb923c", bg: "rgba(251,146,60,0.1)", border: "rgba(251,146,60,0.15)" },
+    weekly:  { color: "#60a5fa", bg: "rgba(96,165,250,0.1)", border: "rgba(96,165,250,0.15)" },
+    event:   { color: "#f472b6", bg: "rgba(244,114,182,0.1)", border: "rgba(244,114,182,0.15)" },
+    achievement: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.15)" },
+  };
+  const cat = categoryColors[mission.category] ?? categoryColors.daily;
+
+  return (
+    <Link href="/missions" style={{ textDecoration: "none" }}>
+      <div className={isCompleted ? "anim-claim-pulse" : "anim-breathe"} style={{
+        borderRadius: 18,
+        padding: "14px 16px",
+        background: isCompleted
+          ? "linear-gradient(135deg, rgba(250,204,21,0.1), rgba(245,158,11,0.06))"
+          : "rgba(255,255,255,0.04)",
+        border: isCompleted
+          ? "1.5px solid rgba(250,204,21,0.3)"
+          : `1px solid ${cat.border}`,
+        boxShadow: isCompleted ? "0 0 16px rgba(250,204,21,0.1)" : "none",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {/* Label */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: 8,
+        }}>
+          <span style={{
+            fontSize: 8, fontWeight: 800,
+            padding: "2px 7px", borderRadius: 8,
+            background: isCompleted ? "rgba(250,204,21,0.15)" : cat.bg,
+            color: isCompleted ? "#facc15" : cat.color,
+            border: `1px solid ${isCompleted ? "rgba(250,204,21,0.25)" : cat.border}`,
+          }}>
+            {isCompleted ? "🎁 آماده دریافت!" : mission.recommendedReasonFa ? "⭐ پیشنهاد امروز" : "🎯 ماموریت فعال"}
+          </span>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>
+            ماموریت‌ها ←
+          </span>
+        </div>
+
+        {/* Mission title */}
+        <div style={{
+          fontSize: 14, fontWeight: 800, color: "white", marginBottom: 4,
+        }}>
+          {mission.emoji} {mission.titleFa}
+        </div>
+
+        {/* Reason or subtitle */}
+        {(mission.recommendedReasonFa ?? mission.subtitleFa) && (
+          <div style={{
+            fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 8,
+          }}>
+            {mission.recommendedReasonFa ?? mission.subtitleFa}
+          </div>
+        )}
+
+        {/* Progress bar */}
+        {progressPct > 0 && (
+          <div style={{
+            height: 4, borderRadius: 3,
+            background: "rgba(255,255,255,0.08)", overflow: "hidden",
+          }}>
+            <div style={{
+              width: `${progressPct}%`, height: "100%", borderRadius: 3,
+              background: isCompleted
+                ? "linear-gradient(90deg, #facc15, #fbbf24)"
+                : `linear-gradient(90deg, ${cat.color}, ${cat.color}cc)`,
+              transition: "width 0.6s ease",
+            }} />
+          </div>
+        )}
+      </div>
+    </Link>
   );
 }
 

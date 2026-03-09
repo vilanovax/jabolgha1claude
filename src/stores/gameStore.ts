@@ -26,6 +26,8 @@ import { MARKET_ITEMS, generateNpcListings } from "@/data/marketplaceData";
 import type { MarketListing } from "@/data/marketplaceData";
 import { LEISURE_ACTIVITIES } from "@/data/leisureData";
 import type { LeisureActivity } from "@/data/leisureData";
+import { dispatchGameplayEvent } from "@/game/events/eventBus";
+import { getActionEvents } from "@/game/actions/actionEventMap";
 
 export interface ActiveCourseState {
   courseId: string;
@@ -405,6 +407,63 @@ export const useGameStore = create<GameState>()(
             marketListings: newListings,
           };
         });
+
+        // ─── Emit day_ended to Mission Engine, then generate new missions ───
+        dispatchGameplayEvent({ type: "day_ended" });
+
+        const gs = get();
+        const { useMissionStore } = require("@/game/missions/store") as typeof import("@/game/missions/store");
+        const missionStore = useMissionStore.getState();
+        missionStore.initMissionsForNewDay({
+          day: gs.player.dayInGame,
+          player: {
+            level: gs.player.level,
+            xp: gs.player.xp,
+            money: gs.bank.checking,
+            stars: gs.player.stars ?? 0,
+            energy: gs.player.energy,
+            hunger: gs.player.hunger,
+            stress: gs.player.happiness < 40 ? 65 : gs.player.happiness < 60 ? 35 : 15,
+            happiness: gs.player.happiness,
+            health: gs.player.health ?? 80,
+            reputation: 50,
+            currentJobId: null,
+            strongestSkillTree: null,
+            studySessionsLast7Days: 2,
+            workShiftsLast7Days: 3,
+            exerciseSessionsLast7Days: 1,
+            restSessionsLast7Days: 1,
+            jobsAppliedLast7Days: 0,
+            jobRejectionsLast7Days: 0,
+            savings: gs.bank.savings,
+            debt: gs.bank.loans.reduce((s, l) => s + (l.remainingPrincipal ?? 0), 0),
+            investmentsTotal: missionStore.cumulativeStats.totalInvested,
+            routineConsistencyScore: Math.min(
+              1,
+              missionStore.cumulativeStats.totalWorkShifts / Math.max(1, gs.player.dayInGame)
+            ),
+          },
+          world: {
+            currentWaveType: gs.wave.currentPhase,
+            inflationLevel: gs.indicators.Inflation_Index,
+            unemploymentRate: gs.indicators.Unemployment_Rate,
+            techDemandLevel: gs.indicators.IT_Demand,
+          },
+        });
+
+        // Refresh achievements
+        missionStore.refreshAchievements({
+          totalMoneyEarned: missionStore.cumulativeStats.totalMoneyEarned,
+          totalJobsAccepted: missionStore.cumulativeStats.totalJobsAccepted,
+          totalWorkShifts: missionStore.cumulativeStats.totalWorkShifts,
+          totalStudySessions: missionStore.cumulativeStats.totalStudySessions,
+          totalExerciseSessions: missionStore.cumulativeStats.totalExerciseSessions,
+          totalInvested: missionStore.cumulativeStats.totalInvested,
+          totalCoursesCompleted: gs.completedCourses.length,
+          currentSavings: gs.bank.savings,
+          currentLevel: gs.player.level,
+          daysPlayed: gs.player.dayInGame,
+        });
       },
 
       executeAction: (categoryId, optionIndex, useSponsored = false) => {
@@ -491,6 +550,18 @@ export const useGameStore = create<GameState>()(
           : [...state.actionsCompletedToday, categoryId];
 
         set({ player: newPlayer, bank: newBank, actionsCompletedToday });
+
+        // ─── Emit gameplay events for Mission Engine ───
+        const moneyGained = appliedEffects
+          .filter((e) => e.key === "money" && e.value > 0)
+          .reduce((sum, e) => sum + e.value, 0);
+        const xpGained = appliedEffects
+          .filter((e) => e.key === "xp" && e.value > 0)
+          .reduce((sum, e) => sum + e.value, 0);
+        const moneyCost = activeCosts.money ?? 0;
+
+        const events = getActionEvents({ categoryId, moneyGained, xpGained, moneyCost });
+        events.forEach(dispatchGameplayEvent);
 
         return {
           success: true,

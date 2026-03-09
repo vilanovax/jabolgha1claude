@@ -56,10 +56,11 @@ interface MissionStoreState {
 
   // Actions
   initMissionsForNewDay: (ctx: MissionGenerationContext) => void;
-  processGameplayEvent: (event: GameplayEvent, ctx: MissionGenerationContext) => void;
+  processGameplayEvent: (event: GameplayEvent, ctx?: MissionGenerationContext) => void;
   claimMissionRewards: (missionId: string) => MissionRewards | null;
   refreshAchievements: (checkState: AchievementCheckState) => void;
   getAllVisibleMissions: () => Mission[];
+  getRecommendedMission: () => Mission | null;
 }
 
 export const useMissionStore = create<MissionStoreState>()(
@@ -134,7 +135,7 @@ export const useMissionStore = create<MissionStoreState>()(
         });
       },
 
-      processGameplayEvent: (event, _ctx) => {
+      processGameplayEvent: (event, _ctx?) => {
         const state = get();
         const newCompletedUnclaimed = [...state.completedUnclaimed];
 
@@ -274,6 +275,32 @@ export const useMissionStore = create<MissionStoreState>()(
         if (state.activeRescueMission) visible.push(state.activeRescueMission);
         visible.push(...state.completedUnclaimed);
         return visible;
+      },
+
+      // Returns the single best mission for the player to work on next.
+      getRecommendedMission: () => {
+        const state = get();
+
+        // Priority 1: completed (ready to claim)
+        if (state.completedUnclaimed.length > 0) return state.completedUnclaimed[0];
+
+        // Priority 2: rescue mission (urgent)
+        if (state.activeRescueMission?.status === "active") return state.activeRescueMission;
+
+        // Priority 3: daily missions with recommendedReasonFa
+        const recommendedDaily = state.activeDailyMissions.find(
+          (m) => m.status === "active" && m.recommendedReasonFa
+        );
+        if (recommendedDaily) return recommendedDaily;
+
+        // Priority 4: first active daily
+        const firstDaily = state.activeDailyMissions.find((m) => m.status === "active");
+        if (firstDaily) return firstDaily;
+
+        // Priority 5: story mission
+        if (state.activeStoryMission?.status === "active") return state.activeStoryMission;
+
+        return null;
       },
     }),
     {
