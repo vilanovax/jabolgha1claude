@@ -1073,3 +1073,139 @@ Both components pull directly from `useCityStore` (no prop drilling).
 - **Mission engine** → city events with `missionEventTag` can be used to trigger event missions
 - **City page** → `SectorGrid` and `CityEventsList` components replace basic event display
 
+
+---
+
+## 17. Integration Layer: City Engine ↔ Game Systems
+
+### 17.1 Overview
+
+The integration layer converts `CityState` into concrete gameplay modifiers consumed by the Job Market, Investment, Mission Engine, and City UI.
+
+**File location**: `src/game/integration/`
+**Trigger**: called in `gameStore.startNextDay()` after city simulation runs
+
+---
+
+### 17.2 Data Flow
+
+```
+City Simulation (daily) → CityState
+        ↓
+city-impact-resolver.ts → CityGameplayModifiers
+        ↓
+┌──────────────┬────────────────┬─────────────────┬──────────────────┐
+│ Job Market   │ Investment     │ Mission Engine  │ Opportunities    │
+│ salary mult  │ return by asset│ event missions  │ player actions   │
+│ hiring mod   │ risk mod       │ weight boosts   │ shown on city UI │
+└──────────────┴────────────────┴─────────────────┴──────────────────┘
+```
+
+---
+
+### 17.3 `CityGameplayModifiers` Structure (`city-impact-resolver.ts`)
+
+```typescript
+{
+  jobMarket: {
+    salaryMultiplierBySector: Record<SectorId, number>
+    hiringChanceModifierBySector: Record<SectorId, number>  // additive %
+    jobListingCountMultiplierBySector: Record<SectorId, number>
+  }
+  investment: {
+    returnModifierByAsset: Record<InvestmentAsset, number>  // multiplicative
+    riskModifierByAsset: Record<InvestmentAsset, number>    // additive chance
+  }
+  economy: {
+    costOfLivingMultiplier: number
+    rentMultiplier: number
+    foodPriceMultiplier: number
+    transportMultiplier: number
+  }
+  missions: {
+    eventMissionTypes: string[]
+    missionWeightBoosts: Partial<Record<string, number>>
+  }
+}
+```
+
+---
+
+### 17.4 Job-City Bridge (`job-city-bridge.ts`)
+
+| Function | Purpose |
+|----------|---------|
+| `enrichJobListingsWithCity(listings, modifiers)` | Returns job listings with city-scaled salaries + hiring modifiers |
+| `calcHiringProbability(params)` | Combines baseChance + skill + reputation + cityModifier |
+| `getCityAdjustedSalary(baseSalary, sector, modifiers)` | Per-sector salary with city mult |
+| `getJobCityImpactLabel(sector, modifiers)` | Persian label for UI badges |
+
+Hiring formula:
+```
+hireChance = baseChance + skillScore × 0.3 + reputation × 0.1 + cityHiringModifier
+             clamped to [0.05, 0.95]
+```
+
+---
+
+### 17.5 Investment-City Bridge (`investment-city-bridge.ts`)
+
+Asset types: `stocks`, `crypto`, `gold`, `startup`, `bank_savings`, `real_estate`
+
+Example wave effects on return multipliers:
+| Wave | Stocks | Crypto | Gold | Startup |
+|------|--------|--------|------|---------|
+| finance_bull | ×1.35 | ×1.0 | ×1.05 | ×1.0 |
+| tech_boom | ×1.0 | ×1.4 | ×1.05 | ×1.3 |
+| recession | ×0.75 | ×0.6 | ×1.15 | ×0.7 |
+
+High inflation → bank_savings real return ×0.9, gold ×1.25
+
+---
+
+### 17.6 Mission-City Bridge (`mission-city-bridge.ts`)
+
+Generates new `Mission` objects from city wave/events. Injected into `useMissionStore.activeEventMission` each day.
+
+- Wave missions: 1 per wave type (tech_boom → work shift, recession → save money, etc.)
+- Event missions: fire once when event starts (`startedOnDay === dayInGame`)
+- All use correct `MissionObjective` union types from `@/game/missions/types`
+
+---
+
+### 17.7 Opportunity Generator (`opportunity-generator.ts`)
+
+Generates 2–4 `CityOpportunity[]` items shown on city page:
+- **job_hiring**: sector with highest demand
+- **investment_hot**: when wave.investmentBonus > 1.1
+- **cost_alert**: recession or economyHealth < 40
+- **skill_demand**: top sector (tech/finance)
+- Events with severity major/crisis
+
+Stored in `gameStore.cityIntegrationOpportunities`, shown via `CityOpportunities` component.
+
+---
+
+### 17.8 Daily Pipeline (`daily-integration-pipeline.ts`)
+
+```typescript
+runDailyIntegrationPipeline(cityState, dayInGame, playerLevel)
+→ {
+    modifiers: CityGameplayModifiers,
+    opportunities: CityOpportunity[]
+  }
+```
+
+Also injects event missions into `useMissionStore` as a side effect.
+
+`getCurrentCityModifiers()` — read-only helper for UI components (no side effects).
+
+---
+
+### 17.9 UI Integration
+
+| Component | Location | Shows |
+|-----------|----------|-------|
+| `CityOpportunities` | `/city` Events tab | Player opportunity cards with CTA links |
+| `CityJobModifiers` | `/jobs` page header | Per-sector salary/hiring impact badges |
+
