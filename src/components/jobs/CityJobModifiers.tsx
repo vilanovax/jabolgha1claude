@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useCityStore } from "@/game/city/city-store";
 import { getCityGameplayModifiers } from "@/game/integration/city-impact-resolver";
 import { toPersian } from "@/data/mock";
@@ -19,29 +19,24 @@ const SECTOR_EMOJIS: Record<SectorId, string> = {
   retail: "🛍️", services: "🔧", manufacturing: "🏭",
 };
 
+const SECTOR_IDS: SectorId[] = ["tech", "finance", "construction", "retail", "services", "manufacturing"];
+
 export default function CityJobModifiers() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const cityState = useCityStore((s) => ({
-    sectors: s.sectors,
-    currentWaveId: s.currentWaveId,
-    activeEvents: s.activeEvents,
-    economyHealth: s.economyHealth,
-    inflationLevel: s.inflationLevel,
-    waveRemainingDays: s.waveRemainingDays,
-    lastUpdatedDay: s.lastUpdatedDay,
-  }));
+  // Select only primitives to avoid infinite loop from object selector
+  const lastUpdatedDay = useCityStore((s) => s.lastUpdatedDay);
+  const economyHealth = useCityStore((s) => s.economyHealth);
 
-  if (!mounted) return null;
+  const modifiers = useMemo(() => {
+    if (!mounted) return null;
+    return getCityGameplayModifiers(useCityStore.getState());
+  }, [mounted, lastUpdatedDay, economyHealth]);
 
-  // We need full city state for modifiers
-  const fullCityState = useCityStore.getState();
-  const modifiers = getCityGameplayModifiers(fullCityState);
+  if (!mounted || !modifiers) return null;
 
-  const sectorIds: SectorId[] = ["tech", "finance", "construction", "retail", "services", "manufacturing"];
-
-  const impactSectors = sectorIds.filter((id) => {
+  const impactSectors = SECTOR_IDS.filter((id) => {
     const hiring = modifiers.jobMarket.hiringChanceModifierBySector[id];
     const salary = modifiers.jobMarket.salaryMultiplierBySector[id];
     return Math.abs(hiring) > 0.03 || Math.abs(salary - 1) > 0.04;
@@ -68,16 +63,11 @@ export default function CityJobModifiers() {
         {impactSectors.map((id) => {
           const hiring = modifiers.jobMarket.hiringChanceModifierBySector[id];
           const salary = modifiers.jobMarket.salaryMultiplierBySector[id];
-          const isPositive = hiring > 0 || salary > 1.04;
 
           return (
-            <div key={id} style={{
-              display: "flex", alignItems: "center", gap: 8,
-            }}>
+            <div key={id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 14 }}>{SECTOR_EMOJIS[id]}</span>
-              <span style={{
-                fontSize: 11, color: "rgba(255,255,255,0.6)", flex: 1,
-              }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", flex: 1 }}>
                 {SECTOR_LABELS[id]}
               </span>
 
