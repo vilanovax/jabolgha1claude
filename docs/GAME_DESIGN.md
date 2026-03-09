@@ -919,3 +919,157 @@ partialize: (state) => ({
 ```
 
 Non-persisted state (re-seeded on load): job, skills, jobListings, cityPlayers, cityOpportunities, marketInsight.
+
+---
+
+## 16. Dynamic City Simulation Engine
+
+### 16.1 Overview
+
+The city simulation runs **once per day** (triggered in `startNextDay()`) and models the macro-economic environment of Tehran. It runs independently from the legacy tick-based engine (`src/engine/`) and is stored in a separate Zustand store.
+
+**File location**: `src/game/city/`
+**Store key**: `"shahre-man-city"` (persisted)
+
+---
+
+### 16.2 Core Types (`types.ts`)
+
+| Type | Purpose |
+|------|---------|
+| `SectorId` | 6 sectors: `tech`, `finance`, `construction`, `retail`, `services`, `manufacturing` |
+| `SectorState` | Health (0–100), salary multiplier (0.5–1.8), job demand (0–100), trend |
+| `CityWaveId` | 7 wave types: stability, tech_boom, recession, construction_surge, finance_bull, retail_holiday, manufacturing_revival |
+| `CityWave` | Wave definition: sector modifiers (healthDelta, salaryMod, jobDemandDelta), inflation delta, investment bonus, min/max days |
+| `CityEvent` | Event: affected sectors, health/salary/job/investment impacts, duration, optional mission tag |
+| `ActiveCityEvent` | Event currently running + `remainingDays`, `startedOnDay` |
+| `CityState` | Snapshot: sectors, currentWaveId, waveRemainingDays, activeEvents, economyHealth, inflationLevel, lastUpdatedDay |
+
+---
+
+### 16.3 Economy Sectors
+
+Each sector has:
+- **health** (0–100): sector vitality, drifts toward mean (60) with ±3% per day
+- **salaryMultiplier** (0.5–1.8): applied to all job salaries in that sector
+- **jobDemand** (0–100): affects how many openings are available
+- **trend**: `"up"` | `"flat"` | `"down"` for UI indicators
+
+Sector weights in economy health score:
+| Sector | Weight |
+|--------|--------|
+| Tech | 25% |
+| Finance | 20% |
+| Construction | 15% |
+| Retail | 15% |
+| Services | 15% |
+| Manufacturing | 10% |
+
+---
+
+### 16.4 City Waves (`seed-waves.ts`)
+
+7 named archetypes cycle through the city. Each wave lasts 4–10 days and modifies all sectors daily.
+
+| Wave | Primary Beneficiary | Investment Bonus |
+|------|---------------------|-----------------|
+| Stability ⚖️ | Balanced | ×1.0 |
+| Tech Boom 🚀 | Tech, Finance | ×1.3 |
+| Recession 📉 | None (all hurt) | ×0.7 |
+| Construction Surge 🏗️ | Construction, Manufacturing | ×1.1 |
+| Finance Bull 🐂 | Finance, Tech | ×1.5 |
+| Retail Holiday 🛍️ | Retail, Services | ×1.0 |
+| Manufacturing Revival 🏭 | Manufacturing, Construction | ×1.1 |
+
+Wave cycle order: `stability → tech_boom → construction_surge → stability → finance_bull → retail_holiday → stability → recession → manufacturing_revival → (repeat)`
+
+---
+
+### 16.5 City Events (`seed-events.ts`)
+
+12 event templates that can fire during the simulation. Each event:
+- Is active for 3–6 days
+- Applies `sectorHealthDelta` to affected sectors each day
+- Modifies salary and investment multipliers
+- Can be restricted to specific waves (`triggerWaves`)
+- May carry a `missionEventTag` for mission engine integration
+
+| Event | Severity | Key Impact |
+|-------|----------|-----------|
+| AI Investment Surge | major | +12% salary, +20% investments |
+| Tech Layoffs | crisis | -15% salary, -10 job demand |
+| Dollar Spike | major | +30% investments, -5% salary |
+| Stock Crash | crisis | -25% investments |
+| Banking Bonus | minor | +10% investments |
+| Housing Boom | major | +10% construction salary |
+| Infrastructure Project | major | +8 job demand in construction |
+| Norouz Rush | minor | +retail job demand |
+| Import Ban | major | -retail/manufacturing health |
+| Factory Strike | crisis | -manufacturing health |
+| Export Deal | major | +manufacturing/construction |
+| Energy Crisis | crisis | -7% salary across 3 sectors |
+
+---
+
+### 16.6 Daily Simulation Flow (`city-simulation.ts`)
+
+Called via `useCityStore.getState().advanceDay(dayInGame)` inside `startNextDay()`.
+
+```
+1. tickActiveEvents()         → decrement remainingDays, remove expired
+2. checkWaveDayTransition()   → possibly rotate to next wave
+3. applyDailyImpacts()        → update all 6 sectors (wave mod + event mod + mean reversion)
+4. calcEconomyHealth()        → composite score from sector weights
+5. generateDailyEvents()      → probabilistic roll (0-2 new events)
+6. Update inflationLevel      → slow drift based on wave.globalInflationDelta
+```
+
+---
+
+### 16.7 Player-Facing Multipliers (`city-helpers.ts`)
+
+| Function | Returns | Used by |
+|----------|---------|---------|
+| `getSectorSalaryMultiplier(state, sectorId)` | `salaryMultiplier` for that sector | Job listings |
+| `getInvestmentMultiplier(state)` | Wave bonus + finance health + events | Invest action |
+| `getCostOfLivingMultiplier(state)` | 0.80–1.45× (inflation 10–90) | Living costs |
+| `getCityPlayerSummary(state)` | Full `CityPlayerSummary` object | City page UI |
+| `jobCategoryToSector(category)` | Maps job strings to `SectorId` | Job salary calc |
+
+---
+
+### 16.8 Store (`city-store.ts`)
+
+```typescript
+useCityStore {
+  // State (CityState fields spread)
+  sectors, currentWaveId, waveRemainingDays, activeEvents, economyHealth, ...
+
+  // Actions
+  advanceDay(dayInGame: number): void   // idempotent (skips if already updated)
+  getPlayerSummary(): CityPlayerSummary
+  resetCity(): void
+}
+```
+
+---
+
+### 16.9 City UI Components
+
+| Component | Location | Shows |
+|-----------|----------|-------|
+| `SectorGrid` | `src/components/city/SectorGrid.tsx` | 2-col grid of all 6 sectors with health bars, salary multiplier, trend arrow |
+| `CityEventsList` | `src/components/city/CityEventsList.tsx` | Active wave card + list of active city events with severity badges |
+
+Both components pull directly from `useCityStore` (no prop drilling).
+
+---
+
+### 16.10 Integration Points
+
+- **`gameStore.startNextDay()`** → calls `useCityStore.getState().advanceDay()` via lazy require
+- **Job market** → use `getSectorSalaryMultiplier()` when displaying or applying for jobs
+- **Investment action** → use `getInvestmentMultiplier()` to scale investment returns
+- **Mission engine** → city events with `missionEventTag` can be used to trigger event missions
+- **City page** → `SectorGrid` and `CityEventsList` components replace basic event display
+
