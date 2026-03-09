@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import GameHUD from "@/components/home/GameHUD";
 import CharacterStage from "@/components/home/CharacterStage";
@@ -172,10 +172,13 @@ export default function HomePage() {
 }
 
 function RecommendedMissionBanner() {
-  const getRecommended = useMissionStore((s) => s.getRecommendedMission);
-  const mission = getRecommended();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Fallback to old StoryBubble if no mission engine data yet
+  const getRecommended = useMissionStore((s) => s.getRecommendedMission);
+  const mission = mounted ? getRecommended() : null;
+
+  // Fallback to old StoryBubble if not yet mounted or no mission data
   if (!mission) return <StoryBubble />;
 
   const progressPct = getMissionProgressPercent(mission);
@@ -262,6 +265,9 @@ function RecommendedMissionBanner() {
 }
 
 function QuickLinks() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const living = useGameStore((s) => s.living);
   const checking = useGameStore((s) => s.bank.checking);
   const { total } = calculateWeeklyBills(
@@ -271,11 +277,11 @@ function QuickLinks() {
   const links = [
     {
       href: "/bank", emoji: "🏦", label: "بانک",
-      value: formatMoney(checking), color: "#4ade80",
+      value: mounted ? formatMoney(checking) : "...", color: "#4ade80",
     },
     {
       href: "/living", emoji: "📋", label: "قبوض هفتگی",
-      value: formatMoney(total), color: "#f87171",
+      value: mounted ? formatMoney(total) : "...", color: "#f87171",
     },
     {
       href: "/market", emoji: "🏪", label: "جمعه‌بازار",
