@@ -15,6 +15,7 @@ import { useGameStore } from "@/stores/gameStore";
 import { useCityStore } from "@/game/city/city-store";
 import { getCityGameplayModifiers } from "@/game/integration/city-impact-resolver";
 import { inferJobSector } from "@/game/integration/job-city-bridge";
+import { useCareerStore } from "@/game/career/career-store";
 
 // Calculate best match score across all seniority levels of a job
 function getBestMatchScore(
@@ -58,6 +59,7 @@ export default function JobsPage() {
   const completedCourses = useGameStore((s) => s.completedCourses);
   const skills          = useGameStore((s) => s.skills);
   const allSkills       = [...skills.hard, ...skills.soft];
+  const careerStore     = useCareerStore();
 
   // City modifiers (primitive selectors to avoid infinite loop)
   const lastUpdatedDay  = useCityStore((s) => s.lastUpdatedDay);
@@ -143,7 +145,12 @@ export default function JobsPage() {
 
         setModalResult(result);
         setModalPhase("result");
-        if (accepted) setApplied((prev) => [...prev, jobId]);
+        if (accepted) {
+          setApplied((prev) => [...prev, jobId]);
+          // Fire career progression events
+          careerStore.handleJobAccepted(job.type, job.title, job.company);
+          careerStore.handleInterviewSuccess(job.type, job.title);
+        }
       }, 2000);
     }, 1500);
   }
@@ -154,8 +161,21 @@ export default function JobsPage() {
   }
 
   return (
-    <div className="game-bg" style={{ minHeight: "100dvh" }}>
+    <div className="scene-bg" style={{ minHeight: "100dvh" }}>
       <TopHeader />
+
+      {/* Floating particles */}
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} style={{
+          position: "fixed",
+          width: 3, height: 3, borderRadius: "50%",
+          background: i % 2 === 0 ? "rgba(96,165,250,0.3)" : "rgba(212,168,67,0.3)",
+          top: `${15 + i * 20}%`,
+          right: `${8 + i * 22}%`,
+          animation: `particle-drift ${5 + i * 2}s ease-in-out ${i * 1.5}s infinite`,
+          pointerEvents: "none", zIndex: 0,
+        }} />
+      ))}
 
       <div className="page-enter" style={{
         paddingTop: "calc(var(--header-h) + 8px)",

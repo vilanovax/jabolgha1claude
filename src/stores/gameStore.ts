@@ -579,6 +579,20 @@ export const useGameStore = create<GameState>()(
         const events = getActionEvents({ categoryId, moneyGained, xpGained, moneyCost });
         events.forEach(dispatchGameplayEvent);
 
+        // ─── Career: fire work shift event ───
+        if (categoryId === "work") {
+          const { useCareerStore } = require("@/game/career/career-store") as typeof import("@/game/career/career-store");
+          const careerState = useCareerStore.getState();
+          const gs = get();
+          const jobType = gs.job?.type;
+          const jobTitle = gs.job?.title;
+          careerState.handleWorkShiftCompleted(jobType, jobTitle);
+          if (!careerState.primaryTrack) {
+            const { inferCareerTrack } = require("@/game/career/seed-career-tracks") as typeof import("@/game/career/seed-career-tracks");
+            careerState.setPrimaryTrack(inferCareerTrack(jobType, jobTitle));
+          }
+        }
+
         return {
           success: true,
           effects: appliedEffects,
