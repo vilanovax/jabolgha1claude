@@ -1,51 +1,104 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import TopHeader from "@/components/layout/TopHeader";
 import BottomNav from "@/components/layout/BottomNav";
-import ProfessionalStatusPanel from "@/components/jobs/ProfessionalStatusPanel";
-import GoldenMembershipCard from "@/components/jobs/GoldenMembershipCard";
-import JobTabFilters from "@/components/jobs/JobTabFilters";
-import JobCard from "@/components/jobs/JobCard";
-import PremiumJobCard from "@/components/jobs/PremiumJobCard";
-import ApplicationModal from "@/components/jobs/ApplicationModal";
-import type { ApplicationResult } from "@/components/jobs/ApplicationModal";
-import CityJobModifiers from "@/components/jobs/CityJobModifiers";
+import CityEconomyBanner from "@/components/jobs/CityEconomyBanner";
+import CareerProfileCard from "@/components/jobs/CareerProfileCard";
+import SmartFilters from "@/components/jobs/SmartFilters";
+import type { SmartFilterKey } from "@/components/jobs/SmartFilters";
+import JobCardV2 from "@/components/jobs/JobCardV2";
+import InterviewModal from "@/components/jobs/InterviewModal";
+import type { InterviewResult } from "@/components/jobs/InterviewModal";
 import { jobListings, toPersian } from "@/data/mock";
 import type { JobListing, SeniorityLevel } from "@/data/mock";
 import { useGameStore } from "@/stores/gameStore";
+import { useCityStore } from "@/game/city/city-store";
+import { getCityGameplayModifiers } from "@/game/integration/city-impact-resolver";
+import { inferJobSector } from "@/game/integration/job-city-bridge";
 
-type TabKey = "all" | "hot" | "premium";
+// Calculate best match score across all seniority levels of a job
+function getBestMatchScore(
+  job: JobListing,
+  playerXp: number,
+  completedCourses: string[],
+  playerSkills: { name: string; level: number }[],
+  cityHiringBoost: number,
+): number {
+  let best = 0;
+  for (const level of job.seniorityLevels) {
+    const xpScore    = level.minXp === 0 ? 40 : Math.min(1, playerXp / level.minXp) * 40;
+    const totalSkills = level.requirements.length;
+    const metSkills  = totalSkills === 0 ? 1 : level.requirements.filter((req) => {
+      const ps = playerSkills.find((s) => s.name === req.skill);
+      return ps && ps.level >= req.level;
+    }).length / totalSkills;
+    const totalCourses = level.requiredCourses.length;
+    const metCourses   = totalCourses === 0 ? 1 : level.requiredCourses.filter((c) =>
+      completedCourses.includes(c)
+    ).length / totalCourses;
+    const cityScore = Math.min(15, 7.5 + cityHiringBoost * 50);
+    const score = Math.round(Math.min(100, xpScore + metSkills * 30 + metCourses * 15 + cityScore));
+    if (score > best) best = score;
+  }
+  return best;
+}
 
 export default function JobsPage() {
-  const [tab, setTab] = useState<TabKey>("all");
-  const [applied, setApplied] = useState<number[]>([]);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const [filter, setFilter]         = useState<SmartFilterKey>("all");
+  const [applied, setApplied]       = useState<number[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalPhase, setModalPhase] = useState<"loading" | "result">("loading");
-  const [modalResult, setModalResult] = useState<ApplicationResult | null>(null);
-  const [selectedJob, setSelectedJob] = useState<JobListing | null>(null);
+  const [modalPhase, setModalPhase]     = useState<"loading" | "interview" | "result">("loading");
+  const [modalResult, setModalResult]   = useState<InterviewResult | null>(null);
+  const [selectedJob, setSelectedJob]   = useState<JobListing | null>(null);
 
-  const player = useGameStore((s) => s.player);
+  const player          = useGameStore((s) => s.player);
   const completedCourses = useGameStore((s) => s.completedCourses);
-  const skills = useGameStore((s) => s.skills);
-  const allSkills = [...skills.hard, ...skills.soft];
+  const skills          = useGameStore((s) => s.skills);
+  const allSkills       = [...skills.hard, ...skills.soft];
 
-  const hot = jobListings.filter((j) => j.isHot);
-  const premium = jobListings.filter((j) => j.isPremium);
-  const counts = {
-    all: jobListings.length,
-    hot: hot.length,
-    premium: premium.length,
-  };
+  // City modifiers (primitive selectors to avoid infinite loop)
+  const lastUpdatedDay  = useCityStore((s) => s.lastUpdatedDay);
+  const economyHealth   = useCityStore((s) => s.economyHealth);
+  const cityModifiers   = useMemo(() => {
+    if (!mounted) return null;
+    return getCityGameplayModifiers(useCityStore.getState());
+  }, [mounted, lastUpdatedDay, economyHealth]);
 
-  let items: JobListing[];
-  switch (tab) {
-    case "hot": items = hot; break;
-    case "premium": items = premium; break;
-    default: items = jobListings;
+  const playerXp = mounted ? player.xp : 0;
+
+  // Per-job hiring boost from city
+  function getCityBoost(job: JobListing): number {
+    if (!cityModifiers) return 0;
+    const sector = inferJobSector(job);
+    return cityModifiers.jobMarket.hiringChanceModifierBySector[sector] ?? 0;
   }
 
-  const premiumItems = items.filter((j) => j.isPremium);
-  const regularItems = items.filter((j) => !j.isPremium);
+  // Annotate jobs with match scores for filtering
+  const annotated = useMemo(() => jobListings.map((job) => ({
+    job,
+    score: getBestMatchScore(job, playerXp, completedCourses, allSkills, getCityBoost(job)),
+    boost: getCityBoost(job),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  })), [playerXp, completedCourses, allSkills.length, cityModifiers]);
+
+  const filtered = useMemo(() => {
+    switch (filter) {
+      case "best":    return annotated.filter((a) => a.score >= 60);
+      case "hot":     return annotated.filter((a) => a.job.isHot);
+      case "premium": return annotated.filter((a) => a.job.isPremium);
+      default:        return annotated;
+    }
+  }, [filter, annotated]);
+
+  const counts: Record<SmartFilterKey, number> = {
+    all:     annotated.length,
+    best:    annotated.filter((a) => a.score >= 60).length,
+    hot:     annotated.filter((a) => a.job.isHot).length,
+    premium: annotated.filter((a) => a.job.isPremium).length,
+  };
 
   function handleApply(jobId: number, seniority: SeniorityLevel) {
     const job = jobListings.find((j) => j.id === jobId);
@@ -56,37 +109,43 @@ export default function JobsPage() {
     setModalResult(null);
     setModalVisible(true);
 
+    // Phase 1: loading (1.5s) → Phase 2: interview mini-event (1.5s) → Phase 3: result
     setTimeout(() => {
-      const roll = Math.random() * 100;
-      // Acceptance chance based on how well player meets requirements
-      const xpRatio = Math.min(1, player.xp / seniority.minXp);
-      const baseChance = 40 + xpRatio * 40; // 40% to 80%
-      const accepted = roll <= baseChance;
+      setModalPhase("interview");
 
-      const result: ApplicationResult = accepted
-        ? {
-            accepted: true,
-            xpGain: 50 + Math.floor(Math.random() * 30),
-            moneyGain: seniority.salary,
-            reputationGain: 3 + Math.floor(Math.random() * 5),
-          }
-        : {
-            accepted: false,
-            rejectReason:
-              baseChance < 50
-                ? "سطح مهارت شما کافی نیست. دوره‌های بیشتری بگذرونید."
-                : baseChance < 65
-                  ? "رقابت زیاد بود. شهرت حرفه‌ای بیشتری نیاز دارید."
-                  : "یک کاندیدای قوی‌تر انتخاب شد. دوباره تلاش کنید!",
-          };
+      setTimeout(() => {
+        const roll      = Math.random() * 100;
+        const xpRatio   = Math.min(1, playerXp / seniority.minXp);
+        const boost     = getCityBoost(job);
+        const baseChance = 35 + xpRatio * 40 + boost * 20; // 35–75%+
+        const accepted  = roll <= baseChance;
 
-      setModalResult(result);
-      setModalPhase("result");
+        const result: InterviewResult = accepted
+          ? {
+              accepted: true,
+              xpGain: 50 + Math.floor(Math.random() * 30),
+              moneyGain: seniority.salary,
+              reputationGain: 3 + Math.floor(Math.random() * 5),
+            }
+          : {
+              accepted: false,
+              rejectReason:
+                baseChance < 45
+                  ? "سطح مهارت شما کافی نیست."
+                  : baseChance < 60
+                    ? "رقابت زیاد بود. اعتبار بیشتری نیاز دارید."
+                    : "یک کاندیدای قوی‌تر انتخاب شد.",
+              tip:
+                baseChance < 45
+                  ? "دوره‌های بیشتری بگذرانید و XP کسب کنید."
+                  : "شهرت حرفه‌ای خود را با پروژه‌های بیشتر بالا ببرید.",
+            };
 
-      if (accepted) {
-        setApplied((prev) => [...prev, jobId]);
-      }
-    }, 3000);
+        setModalResult(result);
+        setModalPhase("result");
+        if (accepted) setApplied((prev) => [...prev, jobId]);
+      }, 2000);
+    }, 1500);
   }
 
   function handleModalClose() {
@@ -104,76 +163,55 @@ export default function JobsPage() {
         paddingLeft: 14, paddingRight: 14,
         position: "relative", zIndex: 2,
       }}>
-        {/* Page title */}
+        {/* Page header */}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
           marginBottom: 14,
         }}>
           <div style={{
-            fontSize: 18, fontWeight: 800, color: "#0f172a",
-            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 18, fontWeight: 800, color: "white",
+            display: "flex", alignItems: "center", gap: 8,
           }}>
-            <span style={{ fontSize: 20 }}>💼</span>
+            <span style={{ fontSize: 22 }}>💼</span>
             بازار کار
           </div>
           <div style={{
-            fontSize: 11, fontWeight: 700,
-            padding: "4px 12px", borderRadius: "var(--r-full)",
-            background: "linear-gradient(135deg, #dcfce7, #f0fdf4)",
-            color: "#16a34a", border: "1px solid #bbf7d0",
-            boxShadow: "0 2px 8px rgba(34,197,94,0.15)",
+            fontSize: 11, fontWeight: 700, padding: "4px 12px",
+            borderRadius: 100,
+            background: "rgba(74,222,128,0.1)", color: "#4ade80",
+            border: "1px solid rgba(74,222,128,0.2)",
           }}>
             {toPersian(jobListings.length)} آگهی
           </div>
         </div>
 
-        {/* City Economy Impact on Jobs */}
-        <CityJobModifiers />
+        {/* City economy banner */}
+        <CityEconomyBanner />
 
-        {/* Professional Status */}
-        <ProfessionalStatusPanel />
+        {/* Career profile */}
+        <CareerProfileCard />
 
-        {/* Golden Membership */}
-        <GoldenMembershipCard />
+        {/* Smart filters */}
+        <SmartFilters active={filter} onChange={setFilter} counts={counts} />
 
-        {/* Tab Filters */}
-        <JobTabFilters activeTab={tab} onTabChange={setTab} counts={counts} />
-
-        {/* Premium Jobs */}
-        {premiumItems.length > 0 && (
-          <div style={{ marginBottom: 4 }}>
-            {premiumItems.map((job) => (
-              <PremiumJobCard
-                key={job.id}
-                job={job}
-                isApplied={applied.includes(job.id)}
-                onApply={handleApply}
-                playerXp={player.xp}
-                completedCourses={completedCourses}
-                playerSkills={allSkills}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Regular Jobs */}
-        {regularItems.map((job) => (
-          <JobCard
-            key={job.id}
-            job={job}
-            isApplied={applied.includes(job.id)}
-            onApply={handleApply}
-            playerXp={player.xp}
-            completedCourses={completedCourses}
-            playerSkills={allSkills}
-          />
-        ))}
-
-        {/* Empty state */}
-        {items.length === 0 && (
+        {/* Job cards V2 */}
+        {filtered.length > 0 ? (
+          filtered.map(({ job, boost }) => (
+            <JobCardV2
+              key={job.id}
+              job={job}
+              isApplied={applied.includes(job.id)}
+              onApply={handleApply}
+              playerXp={playerXp}
+              completedCourses={completedCourses}
+              playerSkills={allSkills}
+              cityHiringBoost={boost}
+            />
+          ))
+        ) : (
           <div style={{
             textAlign: "center", padding: "40px 20px",
-            color: "#94a3b8", fontSize: 13,
+            color: "rgba(255,255,255,0.3)", fontSize: 13,
           }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
             آگهی‌ای در این دسته وجود نداره
@@ -183,11 +221,11 @@ export default function JobsPage() {
 
       <BottomNav />
 
-      <ApplicationModal
+      <InterviewModal
         visible={modalVisible}
         phase={modalPhase}
         result={modalResult}
-        jobTitle={selectedJob?.title || ""}
+        jobTitle={selectedJob?.title ?? ""}
         onClose={handleModalClose}
       />
     </div>

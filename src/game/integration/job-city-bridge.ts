@@ -98,7 +98,7 @@ export function getCityAdjustedSalary(
 /**
  * Infer the city sector for a job listing based on its type / title.
  */
-function inferJobSector(job: { type?: string; title?: string }): SectorId {
+export function inferJobSector(job: { type?: string; title?: string }): SectorId {
   const combined = `${job.type ?? ""} ${job.title ?? ""}`.toLowerCase();
 
   if (combined.includes("استارتاپ") || combined.includes("it") ||
