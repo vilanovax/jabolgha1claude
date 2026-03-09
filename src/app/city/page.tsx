@@ -9,6 +9,7 @@ import LimitedOpportunity from "@/components/city/LimitedOpportunity";
 import MarketAnalysis from "@/components/city/MarketAnalysis";
 import SectorGrid from "@/components/city/SectorGrid";
 import CityEventsList from "@/components/city/CityEventsList";
+import CityOpportunities from "@/components/city/CityOpportunities";
 import { useGameStore } from "@/stores/gameStore";
 import { formatMoney, toPersian } from "@/data/mock";
 import type { ActiveEvent } from "@/engine/types";
@@ -100,6 +101,9 @@ export default function CityPage() {
 
             {/* City Events (new simulation engine) */}
             <CityEventsList />
+
+            {/* Player Opportunities */}
+            <CityOpportunities />
 
             {/* Economic Wave (legacy tick-based) */}
             <div style={{

@@ -132,6 +132,7 @@ interface GameState {
   jobListings: typeof seedJobs;
   cityPlayers: typeof seedPlayers;
   cityOpportunities: typeof seedOpportunities;
+  cityIntegrationOpportunities: import("@/game/integration/opportunity-generator").CityOpportunity[];
   marketInsight: typeof seedInsight;
 
   // Event engine state
@@ -222,6 +223,7 @@ export const useGameStore = create<GameState>()(
       jobListings: [...seedJobs],
       cityPlayers: [...seedPlayers],
       cityOpportunities: [...seedOpportunities],
+      cityIntegrationOpportunities: [],
       marketInsight: { ...seedInsight },
 
       // Engine initial state
@@ -454,6 +456,16 @@ export const useGameStore = create<GameState>()(
         // ─── Advance City Simulation ───
         const { useCityStore } = require("@/game/city/city-store") as typeof import("@/game/city/city-store");
         useCityStore.getState().advanceDay(gs.player.dayInGame);
+
+        // ─── Daily Integration Pipeline: city → jobs, missions, opportunities ───
+        const { runDailyIntegrationPipeline } = require("@/game/integration/daily-integration-pipeline") as typeof import("@/game/integration/daily-integration-pipeline");
+        const cityState = useCityStore.getState();
+        const integrationResult = runDailyIntegrationPipeline(
+          cityState,
+          gs.player.dayInGame,
+          gs.player.level,
+        );
+        set({ cityIntegrationOpportunities: integrationResult.opportunities });
 
         // Refresh achievements
         missionStore.refreshAchievements({

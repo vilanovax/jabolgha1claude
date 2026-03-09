@@ -9,6 +9,7 @@ import JobCard from "@/components/jobs/JobCard";
 import PremiumJobCard from "@/components/jobs/PremiumJobCard";
 import ApplicationModal from "@/components/jobs/ApplicationModal";
 import type { ApplicationResult } from "@/components/jobs/ApplicationModal";
+import CityJobModifiers from "@/components/jobs/CityJobModifiers";
 import { jobListings, toPersian } from "@/data/mock";
 import type { JobListing, SeniorityLevel } from "@/data/mock";
 import { useGameStore } from "@/stores/gameStore";
@@ -125,6 +126,9 @@ export default function JobsPage() {
             {toPersian(jobListings.length)} آگهی
           </div>
         </div>
+
+        {/* City Economy Impact on Jobs */}
+        <CityJobModifiers />
 
         {/* Professional Status */}
         <ProfessionalStatusPanel />
