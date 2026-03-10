@@ -22,12 +22,15 @@ import { COURSE_CATALOG } from "@/data/mock";
 import { FOOD_CATALOG, FRIDGE_TIERS } from "@/data/fridgeData";
 import type { FridgeSlot } from "@/data/fridgeData";
 import { HOUSING_TIERS, VEHICLE_TIERS, MOBILE_PLANS, calculateWeeklyBills } from "@/data/livingCosts";
+import type { BillInflationMultipliers } from "@/data/livingCosts";
 import { MARKET_ITEMS, generateNpcListings } from "@/data/marketplaceData";
 import type { MarketListing } from "@/data/marketplaceData";
 import { LEISURE_ACTIVITIES } from "@/data/leisureData";
 import type { LeisureActivity } from "@/data/leisureData";
+import { ROOM_ITEMS, getRoomBuffs } from "@/data/roomItems";
 import { dispatchGameplayEvent } from "@/game/events/eventBus";
 import { getActionEvents } from "@/game/actions/actionEventMap";
+import { WORK_DAYS_PER_MONTH } from "@/data/economyConfig";
 
 export interface ActiveCourseState {
   courseId: string;
@@ -175,6 +178,20 @@ interface GameState {
   inventory: string[];               // owned MarketItem IDs
   marketListings: MarketListing[];    // NPC + player listings
 
+  // Room upgrade state
+  roomItems: string[];               // owned RoomItem IDs
+
+  // Commerce: pending deliveries
+  pendingDeliveries: {
+    id: string;                      // unique delivery id
+    purchasableId: string;           // PurchasableItem.id
+    vendorId: string;
+    finalPrice: number;
+    deliverOnDay: number;            // day when item arrives
+    nameFa: string;
+    emoji: string;
+  }[];
+
   // Actions
   tick: () => void;
   setRunning: (v: boolean) => void;
@@ -207,6 +224,10 @@ interface GameState {
   buyFromListing: (listingId: string) => { success: boolean; reason?: string };
   // Leisure (یه کاری کن)
   doRandomLeisure: () => { success: boolean; activity?: LeisureActivity; reason?: string; ateFoodName?: string };
+  // Room upgrades
+  buyRoomItem: (itemId: string) => { success: boolean; reason?: string };
+  // Unified commerce (vendor system)
+  purchaseItem: (purchasableId: string, vendorId: string) => { success: boolean; reason?: string; deliveryDay?: number | null };
   // Day transition
   startNextDay: () => void;
 }
@@ -262,6 +283,12 @@ export const useGameStore = create<GameState>()(
       // Marketplace initial state
       inventory: [],
       marketListings: [],
+
+      // Room upgrade initial state
+      roomItems: [],
+
+      // Commerce initial state
+      pendingDeliveries: [],
 
       setRunning: (v) => set({ isRunning: v }),
 
@@ -356,13 +383,27 @@ export const useGameStore = create<GameState>()(
             }
           }
 
-          // ─── Weekly bills ───
+          // ─── Weekly bills (with city inflation) ───
           let newLiving = { ...state.living };
           const daysSinceLastBill = newPlayer.dayInGame - newLiving.lastBillDay;
           if (daysSinceLastBill >= 7) {
+            // Read city inflation multipliers (lazy to avoid circular dep)
+            let billInflation: BillInflationMultipliers = { rent: 1, utilities: 1, transport: 1 };
+            try {
+              const { useCityStore } = require("@/game/city/city-store") as typeof import("@/game/city/city-store");
+              const { getCityGameplayModifiers } = require("@/game/integration/city-impact-resolver") as typeof import("@/game/integration/city-impact-resolver");
+              const cityMods = getCityGameplayModifiers(useCityStore.getState());
+              billInflation = {
+                rent:      cityMods.economy.rentMultiplier,
+                utilities: cityMods.economy.costOfLivingMultiplier,
+                transport: cityMods.economy.transportMultiplier,
+              };
+            } catch { /* city store not yet initialized — use defaults */ }
+
             const { total } = calculateWeeklyBills(
               newLiving.housingId, newLiving.vehicleId,
               newLiving.mobilePlanId, newLiving.isOwned,
+              billInflation,
             );
             if (newBank.checking >= total) {
               newBank.checking -= total;
@@ -387,6 +428,35 @@ export const useGameStore = create<GameState>()(
             }
           }
 
+          // ─── Room items: apply daily passive buffs ───
+          const roomDayBuffs = getRoomBuffs(state.roomItems ?? []);
+          if (roomDayBuffs.dailyEnergyBonus > 0) {
+            newPlayer.energy = Math.min(100, newPlayer.energy + roomDayBuffs.dailyEnergyBonus);
+          }
+          if (roomDayBuffs.dailyHappinessBonus > 0) {
+            newPlayer.happiness = Math.min(100, newPlayer.happiness + roomDayBuffs.dailyHappinessBonus);
+          }
+
+          // ─── Commerce: fulfill arrived deliveries ───
+          const arrivedDeliveries = (state.pendingDeliveries ?? []).filter(
+            (d) => newPlayer.dayInGame >= d.deliverOnDay,
+          );
+          const stillPending = (state.pendingDeliveries ?? []).filter(
+            (d) => newPlayer.dayInGame < d.deliverOnDay,
+          );
+          let newInventory = [...(state.inventory ?? [])];
+          let newRoomItems = [...(state.roomItems ?? [])];
+          for (const dlv of arrivedDeliveries) {
+            if (dlv.purchasableId.startsWith("room_")) {
+              const rawId = dlv.purchasableId.replace("room_", "");
+              if (!newRoomItems.includes(rawId)) newRoomItems.push(rawId);
+            } else if (dlv.purchasableId.startsWith("market_")) {
+              const rawId = dlv.purchasableId.replace("market_", "");
+              if (!newInventory.includes(rawId)) newInventory.push(rawId);
+            }
+            // food deliveries handled separately if needed
+          }
+
           // ─── Fridge: expire items ───
           const newFridgeItems = state.fridge.items.filter(
             (slot) => newPlayer.dayInGame <= slot.expiresOnDay,
@@ -407,6 +477,9 @@ export const useGameStore = create<GameState>()(
             fridge: { ...state.fridge, items: newFridgeItems },
             living: newLiving,
             marketListings: newListings,
+            pendingDeliveries: stillPending,
+            inventory: newInventory,
+            roomItems: newRoomItems,
           };
         });
 
@@ -457,6 +530,32 @@ export const useGameStore = create<GameState>()(
         const { useCityStore } = require("@/game/city/city-store") as typeof import("@/game/city/city-store");
         useCityStore.getState().advanceDay(gs.player.dayInGame);
 
+        // ─── Opportunity Engine: generate + expire ───
+        const { useOpportunityStore } = require("@/game/opportunities/store") as typeof import("@/game/opportunities/store");
+        const oppStore = useOpportunityStore.getState();
+        oppStore.expireStaleOpportunities(gs.player.dayInGame);
+        // Resolve live identity archetype
+        let liveArchetype: string | undefined;
+        try {
+          const { useIdentityStore } = require("@/game/identity/identityStore") as typeof import("@/game/identity/identityStore");
+          liveArchetype = useIdentityStore.getState().archetype.id ?? undefined;
+        } catch { /* ok */ }
+
+        oppStore.generateOpportunitiesForNewDay(gs.player.dayInGame, {
+          money: gs.bank.checking,
+          savings: gs.bank.savings,
+          level: gs.player.level,
+          reputation: gs.player.happiness ?? 50,   // proxy until identity rep wired
+          hasActiveJob: !!gs.job,
+          jobTrack: gs.job?.type,
+          activeLoansCount: gs.bank.loans.length,
+          skillIds: [...gs.skills.hard, ...gs.skills.soft].map((s) => s.name),
+          recentCategoryActions: gs.actionsCompletedToday,
+          currentWavePhase: gs.wave.currentPhase,
+          identityArchetype: liveArchetype,
+          dayInGame: gs.player.dayInGame,
+        });
+
         // ─── Daily Integration Pipeline: city → jobs, missions, opportunities ───
         const { runDailyIntegrationPipeline } = require("@/game/integration/daily-integration-pipeline") as typeof import("@/game/integration/daily-integration-pipeline");
         const cityState = useCityStore.getState();
@@ -466,6 +565,19 @@ export const useGameStore = create<GameState>()(
           gs.player.level,
         );
         set({ cityIntegrationOpportunities: integrationResult.opportunities });
+
+        // ─── Advance Stock Market ───
+        try {
+          const { useMarketStore } = require("@/game/market/market-store") as typeof import("@/game/market/market-store");
+          const { getCityGameplayModifiers } = require("@/game/integration/city-impact-resolver") as typeof import("@/game/integration/city-impact-resolver");
+          const cityModsForMarket = getCityGameplayModifiers(useCityStore.getState());
+          const cityWaveId = useCityStore.getState().currentWaveId;
+          useMarketStore.getState().advanceMarketDay(
+            gs.player.dayInGame,
+            cityModsForMarket.investment.returnModifierByAsset as Record<string, number>,
+            cityWaveId,
+          );
+        } catch { /* market store not yet initialized */ }
 
         // Refresh achievements
         missionStore.refreshAchievements({
@@ -480,6 +592,44 @@ export const useGameStore = create<GameState>()(
           currentLevel: gs.player.level,
           daysPlayed: gs.player.dayInGame,
         });
+
+        // ─── Recalculate Game Identity ───
+        try {
+          const { useIdentityStore } = require("@/game/identity/identityStore") as typeof import("@/game/identity/identityStore");
+          const allSkills = [...gs.skills.hard, ...gs.skills.soft];
+          const maxHardSkillLevel = gs.skills.hard.reduce((m, s) => Math.max(m, s.level), 0);
+
+          // Get career track from career store
+          let careerTrack: string | null = null;
+          let careerLevel: string | null = null;
+          try {
+            const { useCareerStore } = require("@/game/career/career-store") as typeof import("@/game/career/career-store");
+            const prog = useCareerStore.getState().getPrimaryProgress();
+            if (prog) { careerTrack = prog.track; careerLevel = prog.level; }
+          } catch { /* no career yet */ }
+
+          const identityReputation = useIdentityStore.getState().reputation.value;
+
+          useIdentityStore.getState().recalculate({
+            level: gs.player.level,
+            money: gs.bank.checking,
+            savings: gs.bank.savings,
+            reputation: identityReputation,
+            careerTrack,
+            careerLevel,
+            totalWorkShifts: missionStore.cumulativeStats.totalWorkShifts,
+            totalStudySessions: missionStore.cumulativeStats.totalStudySessions,
+            totalInvested: missionStore.cumulativeStats.totalInvested,
+            totalMoneyEarned: missionStore.cumulativeStats.totalMoneyEarned,
+            dayInGame: gs.player.dayInGame,
+            maxHardSkillLevel,
+            hasActiveJob: !!gs.job,
+            activeLoansCount: gs.bank.loans.length,
+            totalRiskyActions: missionStore.cumulativeStats.totalInvested > 0
+              ? Math.floor(missionStore.cumulativeStats.totalInvested / 3_000_000)
+              : 0,
+          });
+        } catch { /* identity store not initialized */ }
       },
 
       executeAction: (categoryId, optionIndex, useSponsored = false) => {
@@ -528,9 +678,34 @@ export const useGameStore = create<GameState>()(
           newBank.checking = Math.max(0, newBank.checking - Math.round(activeCosts.money * costMult));
         }
 
+        // For work category: override money effect with job salary when player has an active job
+        const WORK_SHIFT_MULTIPLIERS: Record<string, number> = {
+          part_time: 0.5,
+          full_shift: 1.0,
+          overtime: 1.6,
+        };
+        const roomBuffs = getRoomBuffs(state.roomItems ?? []);
+        const resolvedEffects = (() => {
+          if (categoryId === "work" && state.job?.salary) {
+            const perShiftBase = state.job.salary / WORK_DAYS_PER_MONTH;
+            const shiftMul = WORK_SHIFT_MULTIPLIERS[baseOption.id] ?? 1.0;
+            const salaryIncome = Math.round(perShiftBase * shiftMul * roomBuffs.workIncomeMultiplier);
+            return activeEffects.map((e) =>
+              e.key === "money" ? { ...e, value: salaryIncome } : e
+            );
+          }
+          // No active job: apply room buff to base income
+          if (categoryId === "work") {
+            return activeEffects.map((e) =>
+              e.key === "money" ? { ...e, value: Math.round(e.value * roomBuffs.workIncomeMultiplier) } : e
+            );
+          }
+          return activeEffects;
+        })();
+
         // Apply effects with wave multiplier
         const appliedEffects: ActionEffect[] = [];
-        for (const effect of activeEffects) {
+        for (const effect of resolvedEffects) {
           const value = Math.round(effect.value * effectMult);
           appliedEffects.push({ ...effect, value });
 
@@ -592,6 +767,14 @@ export const useGameStore = create<GameState>()(
             careerState.setPrimaryTrack(inferCareerTrack(jobType, jobTitle));
           }
         }
+
+        // ─── Identity: fire reputation events ───
+        try {
+          const { useIdentityStore } = require("@/game/identity/identityStore") as typeof import("@/game/identity/identityStore");
+          if (categoryId === "work" && !riskTriggered) {
+            useIdentityStore.getState().applyReputationEvent("work_shift_completed");
+          }
+        } catch { /* identity store not yet init */ }
 
         return {
           success: true,
@@ -663,7 +846,8 @@ export const useGameStore = create<GameState>()(
         // XP per session = total XP / (totalDays * sessionsPerDay)
         const totalXp = sponsored ? sponsored.xpReward : courseDef.xpReward;
         const totalSessions = courseDef.totalDays * sessionsPerDay;
-        const xpPerSession = Math.round(totalXp / totalSessions);
+        const studyRoomBuffs = getRoomBuffs(state.roomItems ?? []);
+        const xpPerSession = Math.round((totalXp / totalSessions) * studyRoomBuffs.learningSpeedMultiplier);
         newPlayer.xp += xpPerSession;
 
         const newSessionsCompleted = ac.sessionsCompletedToday + 1;
@@ -810,7 +994,17 @@ export const useGameStore = create<GameState>()(
         if (state.fridge.items.length >= tier.slots) {
           return { success: false, reason: `یخچال پره! (${tier.slots}/${tier.slots})` };
         }
-        if (state.bank.checking < food.price) {
+
+        // Apply city food price multiplier
+        let foodPriceMul = 1;
+        try {
+          const { useCityStore } = require("@/game/city/city-store") as typeof import("@/game/city/city-store");
+          const { getCityGameplayModifiers } = require("@/game/integration/city-impact-resolver") as typeof import("@/game/integration/city-impact-resolver");
+          foodPriceMul = getCityGameplayModifiers(useCityStore.getState()).economy.foodPriceMultiplier;
+        } catch { /* city store not yet ready */ }
+
+        const actualPrice = Math.round(food.price * foodPriceMul);
+        if (state.bank.checking < actualPrice) {
           return { success: false, reason: "موجودی کافی نیست! 💰" };
         }
 
@@ -821,7 +1015,7 @@ export const useGameStore = create<GameState>()(
         };
 
         set({
-          bank: { ...state.bank, checking: state.bank.checking - food.price },
+          bank: { ...state.bank, checking: state.bank.checking - actualPrice },
           fridge: { ...state.fridge, items: [...state.fridge.items, slot] },
         });
         return { success: true };
@@ -1032,6 +1226,114 @@ export const useGameStore = create<GameState>()(
           fridge: { ...state.fridge, items: newFridgeItems },
         });
         return { success: true, activity, ateFoodName };
+      },
+
+      buyRoomItem: (itemId) => {
+        const state = get();
+        const item = ROOM_ITEMS.find((r) => r.id === itemId);
+        if (!item) return { success: false, reason: "آیتم نامعتبر" };
+        if ((state.roomItems ?? []).includes(itemId)) return { success: false, reason: "قبلاً خریدی" };
+        if (item.unlockLevel && state.player.level < item.unlockLevel) {
+          return { success: false, reason: `نیاز به سطح ${item.unlockLevel}` };
+        }
+        if (state.bank.checking < item.price) return { success: false, reason: "موجودی کافی نیست" };
+        set({
+          bank: { ...state.bank, checking: state.bank.checking - item.price },
+          roomItems: [...(state.roomItems ?? []), itemId],
+        });
+        return { success: true };
+      },
+
+      purchaseItem: (purchasableId, vendorId) => {
+        const state = get();
+        const { findPurchasable } = require("@/data/purchasables") as typeof import("@/data/purchasables");
+        const { getPurchaseQuote, validatePurchase } = require("@/game/purchase/purchaseEngine") as typeof import("@/game/purchase/purchaseEngine");
+        const { VENDORS } = require("@/data/vendors") as typeof import("@/data/vendors");
+
+        const item = findPurchasable(purchasableId);
+        if (!item) return { success: false, reason: "محصول نامعتبر" };
+
+        const vendor = VENDORS[vendorId as import("@/data/vendors").VendorId];
+        if (!vendor) return { success: false, reason: "فروشگاه نامعتبر" };
+
+        const ownedIds = [...(state.inventory ?? []), ...(state.roomItems ?? [])];
+        const context = {
+          playerLevel: state.player.level,
+          playerMoney: state.bank.checking,
+          playerEnergy: state.player.energy,
+          ownedItemIds: ownedIds,
+          currentDay: state.player.dayInGame,
+        };
+
+        const quote = getPurchaseQuote(item, vendorId as import("@/data/vendors").VendorId, context);
+        const validation = validatePurchase(item, quote, context);
+        if (!validation.valid) return { success: false, reason: validation.reason };
+
+        const newBank = { ...state.bank, checking: state.bank.checking - quote.finalPrice };
+        const newPlayer = { ...state.player };
+
+        // Energy cost for physical vendors
+        if (quote.energyCost > 0) {
+          newPlayer.energy = Math.max(0, newPlayer.energy - quote.energyCost);
+        }
+
+        if (quote.isImmediate) {
+          // Apply item immediately based on source system
+          if (item.sourceSystem === "food") {
+            // Add to fridge
+            const fridgeTier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId) ?? FRIDGE_TIERS[0];
+            const foodId = purchasableId.replace("food_", "");
+            const baseFood = FOOD_CATALOG.find((f) => f.id === foodId);
+            if (baseFood && state.fridge.items.length < fridgeTier.slots) {
+              const newSlot: FridgeSlot = {
+                foodId,
+                addedOnDay: state.player.dayInGame,
+                expiresOnDay: state.player.dayInGame + baseFood.baseShelfLife + fridgeTier.shelfLifeBonus,
+              };
+              set({
+                bank: newBank,
+                player: newPlayer,
+                fridge: { ...state.fridge, items: [...state.fridge.items, newSlot] },
+              });
+            } else {
+              set({ bank: newBank, player: newPlayer });
+            }
+          } else if (item.sourceSystem === "room") {
+            const rawId = purchasableId.replace("room_", "");
+            set({
+              bank: newBank,
+              player: newPlayer,
+              roomItems: [...(state.roomItems ?? []), rawId],
+            });
+          } else if (item.sourceSystem === "market") {
+            const rawId = purchasableId.replace("market_", "");
+            set({
+              bank: newBank,
+              player: newPlayer,
+              inventory: [...(state.inventory ?? []), rawId],
+            });
+          } else {
+            set({ bank: newBank, player: newPlayer });
+          }
+          return { success: true, deliveryDay: null };
+        } else {
+          // Delivery pending
+          const delivery = {
+            id: `dlv_${purchasableId}_${state.player.dayInGame}`,
+            purchasableId,
+            vendorId,
+            finalPrice: quote.finalPrice,
+            deliverOnDay: quote.deliveryDay!,
+            nameFa: item.nameFa,
+            emoji: item.emoji,
+          };
+          set({
+            bank: newBank,
+            player: newPlayer,
+            pendingDeliveries: [...(state.pendingDeliveries ?? []), delivery],
+          });
+          return { success: true, deliveryDay: quote.deliveryDay };
+        }
       },
 
       clearExpiredItems: () => {

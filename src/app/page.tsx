@@ -9,10 +9,15 @@ import RoomObjects from "@/components/home/RoomObjects";
 import ActionBottomSheet from "@/components/home/ActionBottomSheet";
 import LeisureButton from "@/components/home/LeisureButton";
 import CityEventBanner from "@/components/home/CityEventBanner";
+import HomeOpportunityWidget from "@/components/opportunities/HomeOpportunityWidget";
 import EndOfDaySummary from "@/components/home/EndOfDaySummary";
 import DailyCardModal from "@/components/home/DailyCardModal";
+import RoomShop from "@/components/home/RoomShop";
+import PhoneCommerceSheet from "@/components/commerce/PhoneCommerceSheet";
+import JomehBazaarSheet from "@/components/commerce/JomehBazaarSheet";
 import BottomNav from "@/components/layout/BottomNav";
 import { useGameStore } from "@/stores/gameStore";
+import { getRoomTier } from "@/data/roomItems";
 import { useMissionStore } from "@/game/missions/store";
 import { getMissionProgressPercent } from "@/game/missions/progress";
 import { formatMoney, toPersian } from "@/data/mock";
@@ -23,6 +28,11 @@ export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showEndOfDay, setShowEndOfDay] = useState(false);
   const [showDailyCard, setShowDailyCard] = useState(false);
+  const [showRoomShop, setShowRoomShop] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
+  const [showBazaar, setShowBazaar] = useState(false);
+
+  const roomItems = useGameStore((s) => s.roomItems ?? []);
   const startNextDay = useGameStore((s) => s.startNextDay);
   const todayCard = useGameStore((s) => s.todayCard);
   const cardShielded = useGameStore((s) => s.cardShielded);
@@ -99,25 +109,42 @@ export default function HomePage() {
         {/* 2. Hero Mission Card */}
         <RecommendedMissionBanner />
 
-        {/* 3. Suggested main action */}
-        <HeroActionButton done={done} onOpenAction={handleOpenAction} />
-
-        {/* 4. Section label: actions */}
-        <div style={{
-          padding: "0 8px",
-          display: "flex", alignItems: "center", gap: 6,
-        }}>
-          <span style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)" }}>
-            امروز چیکار می‌کنی؟
+        {/* 3. Section label + room tier + shop button */}
+        <div style={{ padding: "0 8px", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.4)" }}>
+            اتاق
           </span>
-          <div style={{
-            flex: 1, height: 1,
-            background: "rgba(255,255,255,0.06)",
-          }} />
+          {roomItems.length > 0 && (
+            <span style={{
+              fontSize: 9, fontWeight: 700,
+              color: getRoomTier(roomItems.length).color,
+              opacity: 0.8,
+            }}>
+              · {getRoomTier(roomItems.length).nameFa}
+            </span>
+          )}
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+          <button
+            onClick={() => setShowRoomShop(true)}
+            style={{
+              fontSize: 9, fontWeight: 800,
+              padding: "3px 10px", borderRadius: 10,
+              background: "rgba(99,102,241,0.1)",
+              color: "#818cf8",
+              border: "1px solid rgba(99,102,241,0.2)",
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            🛒 ارتقاء
+          </button>
         </div>
 
-        {/* 5. Action grid */}
-        <RoomObjects done={done} onOpenAction={handleOpenAction} />
+        {/* 4. Room objects (scene interaction) */}
+        <RoomObjects
+          done={done}
+          onOpenAction={handleOpenAction}
+          onEndDay={() => setShowEndOfDay(true)}
+        />
 
         {/* 6. Leisure: do something fun */}
         <LeisureButton />
@@ -140,8 +167,15 @@ export default function HomePage() {
         {/* 8. City event banner */}
         <CityEventBanner />
 
-        {/* 9. Quick links (economy) */}
-        <QuickLinks />
+        {/* 8b. Opportunity widget */}
+        <HomeOpportunityWidget />
+
+        {/* 9. Quick access hub */}
+        <div style={{ padding: "0 8px", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)" }}>دسترسی سریع</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+        </div>
+        <QuickLinks onOpenPhone={() => setShowPhone(true)} onOpenBazaar={() => setShowBazaar(true)} />
       </div>
 
       {/* Action Bottom Sheet */}
@@ -165,6 +199,13 @@ export default function HomePage() {
           onDismiss={() => setShowDailyCard(false)}
         />
       )}
+
+      {/* Room Shop */}
+      <RoomShop isOpen={showRoomShop} onClose={() => setShowRoomShop(false)} />
+
+      {/* Commerce Sheets */}
+      <PhoneCommerceSheet isOpen={showPhone} onClose={() => setShowPhone(false)} />
+      <JomehBazaarSheet isOpen={showBazaar} onClose={() => setShowBazaar(false)} />
 
       <BottomNav />
     </div>
@@ -264,59 +305,146 @@ function RecommendedMissionBanner() {
   );
 }
 
-function QuickLinks() {
+function QuickLinks({
+  onOpenPhone,
+  onOpenBazaar,
+}: {
+  onOpenPhone: () => void;
+  onOpenBazaar: () => void;
+}) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
   const living = useGameStore((s) => s.living);
   const checking = useGameStore((s) => s.bank.checking);
+  const savings = useGameStore((s) => s.bank.savings);
+  const pendingCount = useGameStore((s) => (s.pendingDeliveries ?? []).length);
   const { total } = calculateWeeklyBills(
     living.housingId, living.vehicleId, living.mobilePlanId, living.isOwned,
   );
 
-  const links = [
+  const navGroups = [
     {
-      href: "/bank", emoji: "🏦", label: "بانک",
-      value: mounted ? formatMoney(checking) : "...", color: "#4ade80",
+      label: "💼 کار و مهارت",
+      color: "#4ade80",
+      links: [
+        { href: "/jobs",   emoji: "🏢", label: "بازار کار",  value: "پیشنهادها" },
+        { href: "/skills", emoji: "📚", label: "مهارت‌ها",   value: "آموزش" },
+      ],
     },
     {
-      href: "/living", emoji: "📋", label: "قبوض هفتگی",
-      value: mounted ? formatMoney(total) : "...", color: "#f87171",
+      label: "📈 سرمایه",
+      color: "#f59e0b",
+      links: [
+        { href: "/bank",   emoji: "🏦", label: "حساب جاری",  value: mounted ? formatMoney(checking) : "..." },
+        { href: "/bank",   emoji: "💰", label: "پس‌انداز",   value: mounted ? formatMoney(savings) : "..." },
+        { href: "/stocks", emoji: "📊", label: "بورس",       value: "سهام و طلا" },
+        { href: "/market", emoji: "🏪", label: "بازار",      value: "خرید و فروش" },
+      ],
     },
     {
-      href: "/market", emoji: "🏪", label: "جمعه‌بازار",
-      value: "خرید و فروش", color: "#fbbf24",
-    },
-    {
-      href: "/fridge", emoji: "❄️", label: "یخچال",
-      value: "خوراکی‌ها", color: "#38bdf8",
+      label: "🌆 شهر و زندگی",
+      color: "#fb923c",
+      links: [
+        { href: "/city",   emoji: "🏙️", label: "شهر",        value: "وضعیت اقتصاد" },
+        { href: "/living", emoji: "📋", label: "قبوض",       value: mounted ? formatMoney(total) + "/هفته" : "..." },
+        { href: "/fridge", emoji: "❄️", label: "یخچال",      value: "خوراکی‌ها" },
+      ],
     },
   ];
 
+  // Commerce button type
+  type CommerceBtn = { isButton: true; onClick: () => void; emoji: string; label: string; value: string; badge?: string };
+  type NavLink = { href: string; emoji: string; label: string; value: string };
+
+  const commerceButtons: CommerceBtn[] = [
+    {
+      isButton: true,
+      onClick: onOpenPhone,
+      emoji: "📱",
+      label: "گوشی",
+      value: "سفارش آنلاین",
+      badge: mounted && pendingCount > 0 ? `📦 ${toPersian(pendingCount)}` : undefined,
+    },
+    {
+      isButton: true,
+      onClick: onOpenBazaar,
+      emoji: "🧺",
+      label: "جمعه‌بازار",
+      value: "خرید حضوری",
+    },
+  ];
+
+  function renderLink(link: NavLink | CommerceBtn, color: string, i: number) {
+    const content = (
+      <>
+        <span style={{ fontSize: 18 }}>{link.emoji}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>{link.label}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color }}>{link.value}</div>
+        </div>
+        {"badge" in link && link.badge && (
+          <span style={{
+            fontSize: "9px", fontWeight: 800,
+            color: "#f59e0b",
+            background: "rgba(245,158,11,0.12)",
+            border: "1px solid rgba(245,158,11,0.2)",
+            borderRadius: 8, padding: "1px 5px",
+          }}>
+            {link.badge}
+          </span>
+        )}
+      </>
+    );
+
+    const sharedStyle: React.CSSProperties = {
+      padding: "10px 12px", borderRadius: 14,
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.06)",
+      display: "flex", alignItems: "center", gap: 8,
+    };
+
+    if ("isButton" in link) {
+      return (
+        <button
+          key={i}
+          onClick={link.onClick}
+          style={{ ...sharedStyle, cursor: "pointer", fontFamily: "inherit", textAlign: "right" }}
+        >
+          {content}
+        </button>
+      );
+    }
+
+    return (
+      <Link key={`${link.href}-${i}`} href={link.href} style={{ ...sharedStyle, textDecoration: "none" }}>
+        {content}
+      </Link>
+    );
+  }
+
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(2, 1fr)",
-      gap: 8,
-      padding: "0 4px",
-    }}>
-      {links.map((link) => (
-        <Link key={link.href} href={link.href} style={{
-          textDecoration: "none",
-          padding: "10px 12px", borderRadius: 16,
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          display: "flex", alignItems: "center", gap: 8,
-          transition: "transform 0.15s ease",
-        }}>
-          <span style={{ fontSize: 18 }}>{link.emoji}</span>
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>{link.label}</div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: link.color }}>
-              {link.value}
-            </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "0 4px" }}>
+      {/* Commerce section */}
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#a3e635", marginBottom: 8, padding: "0 2px" }}>
+          🛒 خرید و سفارش
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 7 }}>
+          {commerceButtons.map((btn, i) => renderLink(btn, "#a3e635", i))}
+        </div>
+      </div>
+
+      {/* Navigation groups */}
+      {navGroups.map((group) => (
+        <div key={group.label}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: group.color, marginBottom: 8, padding: "0 2px" }}>
+            {group.label}
           </div>
-        </Link>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 7 }}>
+            {group.links.map((link, i) => renderLink(link as NavLink, group.color, i))}
+          </div>
+        </div>
       ))}
     </div>
   );
