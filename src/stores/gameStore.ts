@@ -181,6 +181,30 @@ interface GameState {
   // Room upgrade state
   roomItems: string[];               // owned RoomItem IDs
 
+  // Onboarding
+  tutorialStep: number;              // 0=setup,1=story,2=first job,3=first win,4=gift,5=next step,-1=done
+  playerGoal: string;                // "developer"|"rich"|"house"|"comfortable"
+
+  // Daily Hook system
+  dailyReward: {
+    day: number;
+    claimed: boolean;
+    type: "energy" | "money";
+    amount: number;
+    emoji: string;
+    labelFa: string;
+  } | null;
+  dailyDeals: {
+    id: string;
+    foodId: string;
+    nameFa: string;
+    emoji: string;
+    originalPrice: number;
+    dealPrice: number;
+    expiresOnDay: number;
+    sold: boolean;
+  }[];
+
   // Commerce: pending deliveries
   pendingDeliveries: {
     id: string;                      // unique delivery id
@@ -230,6 +254,16 @@ interface GameState {
   purchaseItem: (purchasableId: string, vendorId: string) => { success: boolean; reason?: string; deliveryDay?: number | null };
   // Day transition
   startNextDay: () => void;
+
+  // Onboarding actions
+  setTutorialStep: (step: number) => void;
+  setPlayerGoal: (goal: string) => void;
+  setPlayerName: (name: string) => void;
+  giveStarterGift: (goalId: string) => void;
+
+  // Daily Hook actions
+  claimDailyReward: () => { energy?: number; money?: number };
+  buyDailyDeal: (dealId: string) => { success: boolean; reason?: string };
 }
 
 export const useGameStore = create<GameState>()(
@@ -290,7 +324,78 @@ export const useGameStore = create<GameState>()(
       // Commerce initial state
       pendingDeliveries: [],
 
+      // Onboarding initial state
+      tutorialStep: 0,
+      playerGoal: "",
+
+      // Daily Hook initial state
+      dailyReward: null,
+      dailyDeals: [],
+
       setRunning: (v) => set({ isRunning: v }),
+
+      // ─── Onboarding actions ───────────────────────────────────────────────
+      setTutorialStep: (step) => set({ tutorialStep: step }),
+      setPlayerGoal: (goal) => set({ playerGoal: goal }),
+      setPlayerName: (name) => set((s) => ({ player: { ...s.player, name } })),
+      giveStarterGift: (goalId) => {
+        const itemMap: Record<string, string> = {
+          developer:   "ergonomic_chair",
+          rich:        "ergonomic_chair",
+          house:       "bookshelf",
+          comfortable: "coffee_machine",
+        };
+        const itemId = itemMap[goalId] ?? "ergonomic_chair";
+        set((s) => ({
+          roomItems: s.roomItems.includes(itemId) ? s.roomItems : [...s.roomItems, itemId],
+        }));
+      },
+
+      claimDailyReward: () => {
+        const s = get();
+        if (!s.dailyReward || s.dailyReward.claimed) return {};
+        const reward = s.dailyReward;
+        if (reward.type === "energy") {
+          set((st) => ({
+            dailyReward: { ...reward, claimed: true },
+            player: { ...st.player, energy: Math.min(100, st.player.energy + reward.amount) },
+          }));
+          return { energy: reward.amount };
+        } else {
+          set((st) => ({
+            dailyReward: { ...reward, claimed: true },
+            bank: { ...st.bank, checking: st.bank.checking + reward.amount },
+          }));
+          return { money: reward.amount };
+        }
+      },
+
+      buyDailyDeal: (dealId) => {
+        const s = get();
+        const deal = s.dailyDeals.find((d) => d.id === dealId);
+        if (!deal) return { success: false, reason: "معامله یافت نشد" };
+        if (deal.sold) return { success: false, reason: "قبلاً خریداری شده" };
+        if (deal.expiresOnDay < s.player.dayInGame) return { success: false, reason: "منقضی شده" };
+        if (s.bank.checking < deal.dealPrice) return { success: false, reason: "موجودی کافی نیست" };
+
+        const food = FOOD_CATALOG.find((f) => f.id === deal.foodId);
+        if (!food) return { success: false, reason: "غذا یافت نشد" };
+
+        const currentTier = FRIDGE_TIERS.find((t) => t.id === s.fridge.tierId);
+        const slots = currentTier?.slots ?? 4;
+        if (s.fridge.items.length >= slots) return { success: false, reason: "یخچال پر است" };
+
+        const expiresOnDay = s.player.dayInGame + food.baseShelfLife + (currentTier?.shelfLifeBonus ?? 0);
+        set((st) => ({
+          bank: { ...st.bank, checking: st.bank.checking - deal.dealPrice },
+          fridge: {
+            ...st.fridge,
+            items: [...st.fridge.items, { foodId: food.id, addedOnDay: st.player.dayInGame, expiresOnDay }],
+          },
+          dailyDeals: st.dailyDeals.map((d) => d.id === dealId ? { ...d, sold: true } : d),
+        }));
+        return { success: true };
+      },
 
       startNextDay: () => {
         set((state) => {
@@ -466,6 +571,31 @@ export const useGameStore = create<GameState>()(
             newPlayer.happiness = Math.max(0, newPlayer.happiness - expiredCount * 2);
           }
 
+          // ─── Daily Reward generation ───
+          const rewardTypes = [
+            { type: "energy" as const, amount: 15, emoji: "⚡", labelFa: "+۱۵ انرژی" },
+            { type: "money"  as const, amount: 75_000, emoji: "💰", labelFa: "+۷۵ هزار تومان" },
+            { type: "energy" as const, amount: 20, emoji: "⚡", labelFa: "+۲۰ انرژی" },
+            { type: "money"  as const, amount: 150_000, emoji: "💰", labelFa: "+۱۵۰ هزار تومان" },
+          ];
+          const rewardDef = rewardTypes[newPlayer.dayInGame % rewardTypes.length];
+          const newDailyReward = { day: newPlayer.dayInGame, claimed: false, ...rewardDef };
+
+          // ─── Daily Deals generation (2 food items at 75%) ───
+          const nonSponsored = FOOD_CATALOG.filter((f) => !f.isSponsored);
+          const shuffled = [...nonSponsored].sort(() => Math.sin(newPlayer.dayInGame * 7 + 3) - 0.3);
+          const pickedFoods = shuffled.slice(0, 2);
+          const newDailyDeals = pickedFoods.map((food) => ({
+            id: `${food.id}_day${newPlayer.dayInGame}`,
+            foodId: food.id,
+            nameFa: food.name,
+            emoji: food.emoji,
+            originalPrice: food.price,
+            dealPrice: Math.round(food.price * 0.72),
+            expiresOnDay: newPlayer.dayInGame,
+            sold: false,
+          }));
+
           return {
             player: newPlayer,
             bank: newBank,
@@ -480,6 +610,8 @@ export const useGameStore = create<GameState>()(
             pendingDeliveries: stillPending,
             inventory: newInventory,
             roomItems: newRoomItems,
+            dailyReward: newDailyReward,
+            dailyDeals: newDailyDeals,
           };
         });
 

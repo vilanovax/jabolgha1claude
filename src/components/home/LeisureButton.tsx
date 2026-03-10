@@ -41,6 +41,7 @@ export default function LeisureButton() {
       {/* Main button */}
       <button
         onClick={handleClick}
+        className="leisure-pulse"
         style={{
           width: "100%",
           minHeight: 72,

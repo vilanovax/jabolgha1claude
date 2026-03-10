@@ -37,7 +37,7 @@ const OBJECTS: RoomObject[] = [
     id: "work",
     emoji: "💻",
     label: "لپ‌تاپ",
-    getHint: (done) => done.includes("work") ? "✅ کار شد" : "شیفت انجام نشده",
+    getHint: (done) => done.includes("work") ? "✅ شیفت کامل" : "شیفت انجام نشده",
     getWarn: (done) => !done.includes("work"),
     actionCategory: "work",
     glowColor: "rgba(212,168,67,0.4)",
@@ -71,7 +71,7 @@ const OBJECTS: RoomObject[] = [
     id: "exercise",
     emoji: "🏋️",
     label: "باشگاه",
-    getHint: (done) => done.includes("exercise") ? "✅ ورزش شد" : "ورزش نکردی",
+    getHint: (done) => done.includes("exercise") ? "✅ ورزش کامل" : "ورزش نکردی",
     getWarn: () => false,
     actionCategory: "exercise",
     glowColor: "rgba(34,197,94,0.4)",
@@ -95,6 +95,7 @@ const OBJECTS: RoomObject[] = [
     label: "تخت",
     getHint: (_done, state) => {
       if (state.actionsCount === 0) return "روز تازه‌ست";
+      if (state.actionsCount >= 4) return "وقت استراحت!";
       return `${toPersian(state.actionsCount)} اکشن امروز`;
     },
     getWarn: (_done, state) => state.actionsCount >= 4,
@@ -260,6 +261,11 @@ export default function RoomObjects({
                     : warn && !isPhone
                       ? "1.5px solid rgba(239,68,68,0.2)"
                       : "1px solid rgba(255,255,255,0.06)",
+              boxShadow: isDone
+                ? "0 4px 16px rgba(74,222,128,0.12)"
+                : warn && !isPhone
+                  ? "0 4px 16px rgba(239,68,68,0.12)"
+                  : "0 4px 16px rgba(0,0,0,0.3)",
               fontFamily: "inherit",
               position: "relative",
               overflow: "visible",

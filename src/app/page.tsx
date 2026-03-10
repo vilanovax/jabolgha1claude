@@ -7,8 +7,13 @@ import StoryBubble from "@/components/home/StoryBubble";
 import RoomObjects from "@/components/home/RoomObjects";
 import ActionBottomSheet from "@/components/home/ActionBottomSheet";
 import LeisureButton from "@/components/home/LeisureButton";
-import CityEventBanner from "@/components/home/CityEventBanner";
-import HomeOpportunityWidget from "@/components/opportunities/HomeOpportunityWidget";
+import CityMiniMap from "@/components/home/CityMiniMap";
+import OnboardingSetup from "@/components/onboarding/OnboardingSetup";
+import OnboardingStory from "@/components/onboarding/OnboardingStory";
+import OnboardingFirstWin from "@/components/onboarding/OnboardingFirstWin";
+import OnboardingGift from "@/components/onboarding/OnboardingGift";
+import OnboardingNextStep from "@/components/onboarding/OnboardingNextStep";
+import DailyHookCard from "@/components/home/DailyHookCard";
 import EndOfDaySummary from "@/components/home/EndOfDaySummary";
 import DailyCardModal from "@/components/home/DailyCardModal";
 import RoomShop from "@/components/home/RoomShop";
@@ -19,8 +24,7 @@ import { useGameStore } from "@/stores/gameStore";
 import { getRoomTier } from "@/data/roomItems";
 import { useMissionStore } from "@/game/missions/store";
 import { getMissionProgressPercent } from "@/game/missions/progress";
-import { formatMoney, toPersian } from "@/data/mock";
-import { calculateWeeklyBills } from "@/data/livingCosts";
+import { toPersian, formatMoney } from "@/data/mock";
 
 export default function HomePage() {
   const [done, setDone] = useState<string[]>([]);
@@ -30,11 +34,13 @@ export default function HomePage() {
   const [showRoomShop, setShowRoomShop] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [showBazaar, setShowBazaar] = useState(false);
-
-  const roomItems = useGameStore((s) => s.roomItems ?? []);
-  const startNextDay = useGameStore((s) => s.startNextDay);
-  const todayCard = useGameStore((s) => s.todayCard);
-  const cardShielded = useGameStore((s) => s.cardShielded);
+  const roomItems       = useGameStore((s) => s.roomItems ?? []);
+  const startNextDay    = useGameStore((s) => s.startNextDay);
+  const todayCard       = useGameStore((s) => s.todayCard);
+  const cardShielded    = useGameStore((s) => s.cardShielded);
+  const tutorialStep    = useGameStore((s) => s.tutorialStep);
+  const playerGoal      = useGameStore((s) => s.playerGoal);
+  const setTutorialStep = useGameStore((s) => s.setTutorialStep);
 
   const handleStartNextDay = () => {
     startNextDay();
@@ -44,6 +50,9 @@ export default function HomePage() {
 
   const handleDone = (id: string) => {
     setDone((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    if (id === "work" && tutorialStep === 2) {
+      setTutorialStep(3);
+    }
   };
 
   const handleOpenAction = (categoryId: string) => {
@@ -92,68 +101,79 @@ export default function HomePage() {
 
       {/* Main content */}
       <div className="page-enter" style={{
-        paddingTop: 86,
-        paddingBottom: "calc(var(--nav-h) + 20px)",
+        paddingTop: 90,
+        paddingBottom: "calc(var(--nav-h) + 24px)",
         paddingLeft: 14,
         paddingRight: 14,
         position: "relative",
         zIndex: 2,
         display: "flex",
         flexDirection: "column",
-        gap: 16,
+        gap: 12,
       }}>
         {/* 1. Character — compact card */}
         <CharacterStage doneCount={done.length} />
 
-        {/* 2. Main CTA — dominant action button */}
-        <LeisureButton />
+        {/* Goal reminder — shown after onboarding */}
+        <GoalReminder />
 
-        {/* 3. Room — header row with tier + upgrade */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.35)" }}>🏠 اتاق</span>
-          {roomItems.length > 0 && (
-            <span style={{
-              fontSize: 10, fontWeight: 700,
-              color: getRoomTier(roomItems.length).color,
-            }}>
-              {getRoomTier(roomItems.length).nameFa}
-            </span>
-          )}
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-          <button
-            onClick={() => setShowRoomShop(true)}
-            style={{
-              fontSize: 10, fontWeight: 800,
-              padding: "4px 12px", borderRadius: 10,
-              background: "rgba(99,102,241,0.1)",
-              color: "#818cf8",
-              border: "1px solid rgba(99,102,241,0.2)",
-              cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
-            🛒 ارتقاء
-          </button>
+        {/* 2. Delivery status — only when pending */}
+        <DeliveryWidget />
+
+        {/* 3. Daily hook — today's reward, mission, city signal, deals */}
+        <DailyHookCard />
+
+        {/* 4. Mission of the day */}
+        <div>
+          <SectionDivider label="🎯 ماموریت" />
+          <div style={{ marginTop: 10 }}>
+            <RecommendedMissionBanner />
+          </div>
         </div>
 
-        {/* 4. Room objects — 2-column 110px interactive grid */}
-        <RoomObjects
-          done={done}
-          onOpenAction={handleOpenAction}
-          onEndDay={() => setShowEndOfDay(true)}
-        />
+        {/* 4. Room — header + grid */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.35)" }}>🏠 اتاق</span>
+            {roomItems.length > 0 && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: getRoomTier(roomItems.length).color }}>
+                {getRoomTier(roomItems.length).nameFa}
+              </span>
+            )}
+            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
+            <button
+              onClick={() => setShowRoomShop(true)}
+              style={{
+                fontSize: 10, fontWeight: 800, padding: "4px 12px", borderRadius: 10,
+                background: "rgba(99,102,241,0.1)", color: "#818cf8",
+                border: "1px solid rgba(99,102,241,0.2)",
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              🛒 ارتقاء
+            </button>
+          </div>
+          <RoomObjects done={done} onOpenAction={handleOpenAction} onEndDay={() => setShowEndOfDay(true)} />
+        </div>
 
-        {/* 5. Mission of the day */}
-        <SectionDivider label="🎯 ماموریت" />
-        <RecommendedMissionBanner />
+        {/* 5. Main CTA — leisure / random action */}
+        <LeisureButton />
 
-        {/* 6. City section */}
-        <SectionDivider label="🌆 وضعیت شهر" />
-        <CityEventBanner />
-        <HomeOpportunityWidget />
+        {/* 6. City — mini map */}
+        <div>
+          <SectionDivider label="🌆 وضعیت شهر" />
+          <div style={{ marginTop: 10 }}>
+            <CityMiniMap />
+          </div>
+        </div>
 
-        {/* 7. Quick access */}
-        <SectionDivider label="⚡ دسترسی سریع" />
-        <QuickLinks onOpenPhone={() => setShowPhone(true)} onOpenBazaar={() => setShowBazaar(true)} />
+        {/* 7. Quick access — grouped categories */}
+        <div>
+          <SectionDivider label="⚡ دسترسی سریع" />
+          <div style={{ marginTop: 10 }}>
+            <QuickLinks onOpenPhone={() => setShowPhone(true)} onOpenBazaar={() => setShowBazaar(true)} />
+          </div>
+        </div>
       </div>
 
       {/* Action Bottom Sheet */}
@@ -186,6 +206,95 @@ export default function HomePage() {
       <JomehBazaarSheet isOpen={showBazaar} onClose={() => setShowBazaar(false)} />
 
       <BottomNav />
+
+      {/* ── Onboarding overlays ── */}
+      {tutorialStep === 0 && <OnboardingSetup />}
+      {tutorialStep === 1 && <OnboardingStory />}
+      {tutorialStep === 3 && <OnboardingFirstWin earnedAmount={0} />}
+      {tutorialStep === 4 && <OnboardingGift />}
+      {tutorialStep === 5 && (
+        <OnboardingNextStep
+          onOpenAction={handleOpenAction}
+          onOpenBazaar={() => setShowBazaar(true)}
+        />
+      )}
+    </div>
+  );
+}
+
+const GOAL_META: Record<string, { emoji: string; label: string; color: string }> = {
+  developer:   { emoji: "💻", label: "برنامه‌نویس موفق", color: "#a78bfa" },
+  rich:        { emoji: "💰", label: "پولدار شدن",        color: "#facc15" },
+  house:       { emoji: "🏠", label: "خرید خانه",         color: "#34d399" },
+  comfortable: { emoji: "🌍", label: "زندگی راحت",        color: "#60a5fa" },
+};
+
+function GoalReminder() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const tutorialStep = useGameStore((s) => s.tutorialStep);
+  const playerGoal   = useGameStore((s) => s.playerGoal);
+
+  if (!mounted || tutorialStep !== -1 || !playerGoal) return null;
+
+  const meta = GOAL_META[playerGoal];
+  if (!meta) return null;
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "5px 10px", borderRadius: 12,
+      background: `${meta.color}0D`,
+      border: `1px solid ${meta.color}20`,
+      alignSelf: "flex-start",
+    }}>
+      <span style={{ fontSize: 12 }}>{meta.emoji}</span>
+      <span style={{ fontSize: 10, fontWeight: 700, color: meta.color }}>
+        هدف: {meta.label}
+      </span>
+    </div>
+  );
+}
+
+function DeliveryWidget() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const pending = useGameStore((s) => s.pendingDeliveries ?? []);
+  const dayInGame = useGameStore((s) => s.player.dayInGame);
+
+  if (!mounted || pending.length === 0) return null;
+
+  const next = pending.reduce((a, b) => a.deliverOnDay < b.deliverOnDay ? a : b);
+  const daysLeft = Math.max(0, next.deliverOnDay - dayInGame);
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "10px 14px", borderRadius: 16,
+      background: "rgba(245,158,11,0.07)",
+      border: "1px solid rgba(245,158,11,0.18)",
+    }}>
+      <span style={{ fontSize: 20 }}>📦</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#f59e0b" }}>
+          {toPersian(pending.length)} سفارش در راه
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
+          {daysLeft === 0 ? "تحویل امروز!" : `نزدیک‌ترین: ${toPersian(daysLeft)} روز دیگر`}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-end" }}>
+        {pending.slice(0, 2).map((d, i) => (
+          <span key={i} style={{
+            fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.4)",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90,
+          }}>
+            {d.nameFa}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -277,6 +386,7 @@ function RecommendedMissionBanner() {
           <div style={{
             height: 4, borderRadius: 3,
             background: "rgba(255,255,255,0.08)", overflow: "hidden",
+            marginBottom: 8,
           }}>
             <div style={{
               width: `${progressPct}%`, height: "100%", borderRadius: 3,
@@ -287,6 +397,24 @@ function RecommendedMissionBanner() {
             }} />
           </div>
         )}
+
+        {/* Reward + CTA */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {mission.rewards?.money ? (
+            <span style={{ fontSize: 11, fontWeight: 800, color: "#facc15" }}>
+              💰 پاداش: {formatMoney(mission.rewards.money)}
+            </span>
+          ) : <span />}
+          <span style={{
+            fontSize: 10, fontWeight: 800,
+            color: isCompleted ? "#facc15" : cat.color,
+            background: isCompleted ? "rgba(250,204,21,0.12)" : `${cat.color}15`,
+            border: `1px solid ${isCompleted ? "rgba(250,204,21,0.25)" : `${cat.color}30`}`,
+            borderRadius: 10, padding: "3px 10px",
+          }}>
+            {isCompleted ? "دریافت جایزه ←" : "شروع ماموریت ←"}
+          </span>
+        </div>
       </div>
     </Link>
   );
@@ -302,134 +430,84 @@ function QuickLinks({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const living = useGameStore((s) => s.living);
-  const checking = useGameStore((s) => s.bank.checking);
-  const savings = useGameStore((s) => s.bank.savings);
   const pendingCount = useGameStore((s) => (s.pendingDeliveries ?? []).length);
-  const { total } = calculateWeeklyBills(
-    living.housingId, living.vehicleId, living.mobilePlanId, living.isOwned,
-  );
 
-  const navGroups = [
-    {
-      label: "💼 کار و مهارت",
-      color: "#4ade80",
-      links: [
-        { href: "/jobs",   emoji: "🏢", label: "بازار کار",  value: "پیشنهادها" },
-        { href: "/skills", emoji: "📚", label: "مهارت‌ها",   value: "آموزش" },
-      ],
-    },
-    {
-      label: "📈 سرمایه",
-      color: "#f59e0b",
-      links: [
-        { href: "/bank",   emoji: "🏦", label: "حساب جاری",  value: mounted ? formatMoney(checking) : "..." },
-        { href: "/bank",   emoji: "💰", label: "پس‌انداز",   value: mounted ? formatMoney(savings) : "..." },
-        { href: "/stocks", emoji: "📊", label: "بورس",       value: "سهام و طلا" },
-        { href: "/market", emoji: "🏪", label: "بازار",      value: "خرید و فروش" },
-      ],
-    },
-    {
-      label: "🌆 شهر و زندگی",
-      color: "#fb923c",
-      links: [
-        { href: "/city",   emoji: "🏙️", label: "شهر",        value: "وضعیت اقتصاد" },
-        { href: "/living", emoji: "📋", label: "قبوض",       value: mounted ? formatMoney(total) + "/هفته" : "..." },
-        { href: "/fridge", emoji: "❄️", label: "یخچال",      value: "خوراکی‌ها" },
-      ],
-    },
-  ];
+  const tileStyle: React.CSSProperties = {
+    display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center",
+    gap: 5, padding: "12px 6px",
+    borderRadius: 16, textDecoration: "none",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    cursor: "pointer", fontFamily: "inherit",
+    position: "relative",
+  };
 
-  // Commerce button type
-  type CommerceBtn = { isButton: true; onClick: () => void; emoji: string; label: string; value: string; badge?: string };
-  type NavLink = { href: string; emoji: string; label: string; value: string };
-
-  const commerceButtons: CommerceBtn[] = [
-    {
-      isButton: true,
-      onClick: onOpenPhone,
-      emoji: "📱",
-      label: "گوشی",
-      value: "سفارش آنلاین",
-      badge: mounted && pendingCount > 0 ? `📦 ${toPersian(pendingCount)}` : undefined,
-    },
-    {
-      isButton: true,
-      onClick: onOpenBazaar,
-      emoji: "🧺",
-      label: "جمعه‌بازار",
-      value: "خرید حضوری",
-    },
-  ];
-
-  function renderLink(link: NavLink | CommerceBtn, color: string, i: number) {
-    const content = (
+  function Tile({ emoji, label, color, bg, href, onClick, badge }: {
+    emoji: string; label: string; color: string; bg: string;
+    href?: string; onClick?: () => void; badge?: string;
+  }) {
+    const inner = (
       <>
-        <span style={{ fontSize: 18 }}>{link.emoji}</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>{link.label}</div>
-          <div style={{ fontSize: 11, fontWeight: 800, color }}>{link.value}</div>
-        </div>
-        {"badge" in link && link.badge && (
-          <span style={{
-            fontSize: "9px", fontWeight: 800,
-            color: "#f59e0b",
-            background: "rgba(245,158,11,0.12)",
-            border: "1px solid rgba(245,158,11,0.2)",
-            borderRadius: 8, padding: "1px 5px",
+        {badge && (
+          <div style={{
+            position: "absolute", top: 5, left: 5,
+            minWidth: 14, height: 14, borderRadius: 7,
+            background: "#ef4444",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 7, fontWeight: 900, color: "white",
           }}>
-            {link.badge}
-          </span>
+            {badge}
+          </div>
         )}
+        <span style={{ fontSize: 20 }}>{emoji}</span>
+        <span style={{ fontSize: 9, fontWeight: 700, color, textAlign: "center", lineHeight: 1.2 }}>
+          {label}
+        </span>
       </>
     );
-
-    const sharedStyle: React.CSSProperties = {
-      padding: "10px 12px", borderRadius: 14,
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.06)",
-      display: "flex", alignItems: "center", gap: 8,
-    };
-
-    if ("isButton" in link) {
-      return (
-        <button
-          key={i}
-          onClick={link.onClick}
-          style={{ ...sharedStyle, cursor: "pointer", fontFamily: "inherit", textAlign: "right" }}
-        >
-          {content}
-        </button>
-      );
-    }
-
-    return (
-      <Link key={`${link.href}-${i}`} href={link.href} style={{ ...sharedStyle, textDecoration: "none" }}>
-        {content}
-      </Link>
-    );
+    if (onClick) return <button onClick={onClick} style={{ ...tileStyle, background: bg }}>{inner}</button>;
+    return <Link href={href!} style={{ ...tileStyle, background: bg }}>{inner}</Link>;
   }
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "0 4px" }}>
-      {/* Commerce section */}
-      <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#a3e635", marginBottom: 8, padding: "0 2px" }}>
-          🛒 خرید و سفارش
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 7 }}>
-          {commerceButtons.map((btn, i) => renderLink(btn, "#a3e635", i))}
-        </div>
-      </div>
+  const categories = [
+    {
+      label: "خرید",
+      tiles: [
+        { emoji: "🧺", label: "جمعه‌بازار", color: "#fb923c", bg: "rgba(251,146,60,0.08)", onClick: onOpenBazaar },
+        { emoji: "📱", label: "سفارش آنلاین", color: "#60a5fa", bg: "rgba(96,165,250,0.08)", onClick: onOpenPhone, badge: mounted && pendingCount > 0 ? toPersian(pendingCount) : undefined },
+        { emoji: "❄️", label: "یخچال", color: "#22d3ee", bg: "rgba(34,211,238,0.08)", href: "/fridge" },
+      ],
+    },
+    {
+      label: "کار و مهارت",
+      tiles: [
+        { emoji: "🏢", label: "بازار کار", color: "#4ade80", bg: "rgba(74,222,128,0.08)", href: "/jobs" },
+        { emoji: "📚", label: "مهارت‌ها", color: "#a78bfa", bg: "rgba(167,139,250,0.08)", href: "/skills" },
+        { emoji: "🎯", label: "ماموریت‌ها", color: "#f472b6", bg: "rgba(244,114,182,0.08)", href: "/missions" },
+      ],
+    },
+    {
+      label: "سرمایه",
+      tiles: [
+        { emoji: "🏦", label: "بانک", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", href: "/bank" },
+        { emoji: "📊", label: "بورس", color: "#34d399", bg: "rgba(52,211,153,0.08)", href: "/stocks" },
+        { emoji: "🌆", label: "شهر", color: "#818cf8", bg: "rgba(129,140,248,0.08)", href: "/city" },
+      ],
+    },
+  ];
 
-      {/* Navigation groups */}
-      {navGroups.map((group) => (
-        <div key={group.label}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: group.color, marginBottom: 8, padding: "0 2px" }}>
-            {group.label}
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {categories.map((cat) => (
+        <div key={cat.label}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,0.25)", marginBottom: 6 }}>
+            {cat.label}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 7 }}>
-            {group.links.map((link, i) => renderLink(link as NavLink, group.color, i))}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            {cat.tiles.map((tile, i) => (
+              <Tile key={i} {...tile} badge={tile.badge ?? undefined} />
+            ))}
           </div>
         </div>
       ))}

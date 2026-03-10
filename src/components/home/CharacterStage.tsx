@@ -48,9 +48,9 @@ export default function CharacterStage({ doneCount }: { doneCount: number }) {
     <div style={{
       display: "flex",
       alignItems: "center",
-      gap: 14,
-      padding: "12px 16px",
-      borderRadius: 20,
+      gap: 10,
+      padding: "8px 12px",
+      borderRadius: 18,
       background: "rgba(255,255,255,0.03)",
       border: "1px solid rgba(255,255,255,0.06)",
     }}>
@@ -58,15 +58,15 @@ export default function CharacterStage({ doneCount }: { doneCount: number }) {
       <div
         className="anim-breathe"
         style={{
-          width: 54,
-          height: 54,
+          width: 44,
+          height: 44,
           borderRadius: "50%",
           background: "radial-gradient(circle at 40% 35%, rgba(99,102,241,0.18), rgba(20,16,50,0.4))",
           border: "2px solid rgba(255,255,255,0.09)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 30,
+          fontSize: 24,
           flexShrink: 0,
-          boxShadow: `0 0 18px ${glowColor}`,
+          boxShadow: `0 0 14px ${glowColor}`,
           transition: "box-shadow 0.5s",
         }}
       >
@@ -76,16 +76,16 @@ export default function CharacterStage({ doneCount }: { doneCount: number }) {
       {/* Name + role */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 18, fontWeight: 900, color: "white",
+          fontSize: 16, fontWeight: 900, color: "white",
           letterSpacing: "-0.3px",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {player.name.split(" ")[0]}
         </div>
         <div style={{
-          fontSize: 12, fontWeight: 600,
+          fontSize: 11, fontWeight: 600,
           color: repColor,
-          marginTop: 2,
+          marginTop: 1,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {subLabel}
@@ -95,22 +95,19 @@ export default function CharacterStage({ doneCount }: { doneCount: number }) {
       {/* Today's progress */}
       <div style={{
         display: "flex", flexDirection: "column", alignItems: "center",
-        gap: 3, flexShrink: 0,
+        gap: 2, flexShrink: 0,
       }}>
         <div style={{
-          fontSize: 20, fontWeight: 900,
+          fontSize: 17, fontWeight: 900,
           color: doneCount >= totalTasks ? "#4ade80" : "rgba(255,255,255,0.7)",
           fontVariantNumeric: "tabular-nums",
         }}>
-          {toPersian(doneCount)}<span style={{ fontSize: 12, opacity: 0.4 }}>/{toPersian(totalTasks)}</span>
+          {toPersian(doneCount)}<span style={{ fontSize: 10, opacity: 0.4 }}>/{toPersian(totalTasks)}</span>
         </div>
-        <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>
-          کار امروز
-        </div>
-        <div style={{ display: "flex", gap: 3 }}>
+        <div style={{ display: "flex", gap: 2 }}>
           {Array.from({ length: totalTasks }).map((_, i) => (
             <div key={i} style={{
-              width: 5, height: 5, borderRadius: "50%",
+              width: 4, height: 4, borderRadius: "50%",
               background: i < doneCount ? "#4ade80" : "rgba(255,255,255,0.12)",
               transition: "background 0.3s",
             }} />
