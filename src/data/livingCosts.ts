@@ -249,11 +249,18 @@ export interface WeeklyBillBreakdown {
   amount: number;
 }
 
+export interface BillInflationMultipliers {
+  rent: number;        // from city economy.rentMultiplier
+  utilities: number;   // from city economy.costOfLivingMultiplier
+  transport: number;   // from city economy.transportMultiplier
+}
+
 export function calculateWeeklyBills(
   housingId: string,
   vehicleId: string,
   mobilePlanId: string,
   isOwned: boolean,
+  inflation: BillInflationMultipliers = { rent: 1, utilities: 1, transport: 1 },
 ): { total: number; breakdown: WeeklyBillBreakdown[] } {
   const house = HOUSING_TIERS.find((h) => h.id === housingId);
   const vehicle = VEHICLE_TIERS.find((v) => v.id === vehicleId);
@@ -262,19 +269,19 @@ export function calculateWeeklyBills(
   const breakdown: WeeklyBillBreakdown[] = [];
 
   if (house) {
-    // Rent (weekly = monthly / 4)
+    // Rent (weekly = monthly / 4) — scaled by city rent multiplier
     if (!isOwned && house.monthlyRent > 0) {
       breakdown.push({
         key: "rent",
         ...BILL_LABELS.rent,
-        amount: Math.round(house.monthlyRent / 4),
+        amount: Math.round((house.monthlyRent / 4) * inflation.rent),
       });
     }
-    // Utility bills
+    // Utility bills — scaled by cost-of-living multiplier
     for (const [key, amount] of Object.entries(house.bills)) {
       const info = BILL_LABELS[key];
       if (info) {
-        breakdown.push({ key, ...info, amount });
+        breakdown.push({ key, ...info, amount: Math.round((amount as number) * inflation.utilities) });
       }
     }
   }
@@ -283,12 +290,12 @@ export function calculateWeeklyBills(
     breakdown.push({
       key: "fuel",
       ...BILL_LABELS.fuel,
-      amount: vehicle.weeklyFuelCost,
+      amount: Math.round(vehicle.weeklyFuelCost * inflation.transport),
     });
     breakdown.push({
       key: "insurance",
       ...BILL_LABELS.insurance,
-      amount: vehicle.weeklyInsurance,
+      amount: Math.round(vehicle.weeklyInsurance * inflation.transport),
     });
   }
 
@@ -296,7 +303,7 @@ export function calculateWeeklyBills(
     breakdown.push({
       key: "mobile",
       ...BILL_LABELS.mobile,
-      amount: mobile.weeklyCost,
+      amount: mobile.weeklyCost,  // mobile plans don't inflate (fixed contracts)
     });
   }
 

@@ -1,80 +1,120 @@
 "use client";
-import { player, toPersian } from "@/data/mock";
+import { useState, useEffect } from "react";
+import { useGameStore } from "@/stores/gameStore";
+import { toPersian } from "@/data/mock";
+import { useIdentityStore } from "@/game/identity/identityStore";
 
-function getMascotEmoji(energy: number, hunger: number): string {
-  if (energy < 25 || hunger < 20) return "😫";
-  if (energy < 40 || hunger < 35) return "😐";
-  if (energy > 75 && hunger > 60) return "😄";
-  return "🙂";
+function getMascotEmoji(energy: number, hunger: number, happiness: number): string {
+  if (energy < 20 || hunger < 15) return "😫";
+  if (energy < 35 || hunger < 28) return "😐";
+  if (happiness > 75 && energy > 70 && hunger > 60) return "😄";
+  if (happiness > 50) return "🙂";
+  return "😶";
 }
 
 export default function CharacterStage({ doneCount }: { doneCount: number }) {
-  const mascot = getMascotEmoji(player.energy, player.hunger);
-  const totalTasks = 7;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  const player   = useGameStore((s) => s.player);
+  const identity = useIdentityStore((s) => s);
+
+  const totalTasks = 6;
+  const mascot = getMascotEmoji(player.energy, player.hunger, player.happiness);
+
+  const titleLabel = mounted && identity.activeTitle?.nameFa
+    ? identity.activeTitle.nameFa
+    : null;
+
+  const archetypeLabel = mounted && identity.archetype?.id && identity.archetype.id !== "undecided"
+    ? identity.archetype.nameFa
+    : null;
+
+  const repColor = mounted
+    ? ({ unknown: "#94a3b8", trusted: "#60a5fa", professional: "#a78bfa", well_known: "#f59e0b", city_star: "#facc15" }[
+        identity.reputation?.tier ?? "unknown"
+      ] ?? "#94a3b8")
+    : "#94a3b8";
+
+  const glowColor = player.happiness > 70
+    ? "rgba(99,102,241,0.25)"
+    : player.energy < 30
+      ? "rgba(239,68,68,0.18)"
+      : "rgba(99,102,241,0.15)";
+
+  const subLabel = titleLabel ?? archetypeLabel ?? `Lv.${toPersian(player.level)}`;
 
   return (
     <div style={{
       display: "flex",
-      flexDirection: "column",
       alignItems: "center",
-      padding: "16px 0 8px",
-      position: "relative",
+      gap: 14,
+      padding: "12px 16px",
+      borderRadius: 20,
+      background: "rgba(255,255,255,0.03)",
+      border: "1px solid rgba(255,255,255,0.06)",
     }}>
-      {/* Ambient glow ring behind character */}
-      <div style={{
-        position: "absolute",
-        top: 10,
-        width: 130,
-        height: 130,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)",
-        animation: "glow-ring 3s ease-in-out infinite",
-      }} />
-
-      {/* Character */}
-      <div className="anim-breathe" style={{
-        width: 90,
-        height: 90,
-        borderRadius: "50%",
-        background: "radial-gradient(circle at 40% 35%, rgba(99,102,241,0.15), rgba(30,20,60,0.3))",
-        border: "2px solid rgba(255,255,255,0.1)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 48,
-        position: "relative",
-        zIndex: 2,
-        boxShadow: "0 0 30px rgba(99,102,241,0.2)",
-      }}>
+      {/* Avatar */}
+      <div
+        className="anim-breathe"
+        style={{
+          width: 54,
+          height: 54,
+          borderRadius: "50%",
+          background: "radial-gradient(circle at 40% 35%, rgba(99,102,241,0.18), rgba(20,16,50,0.4))",
+          border: "2px solid rgba(255,255,255,0.09)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 30,
+          flexShrink: 0,
+          boxShadow: `0 0 18px ${glowColor}`,
+          transition: "box-shadow 0.5s",
+        }}
+      >
         {mascot}
       </div>
 
-      {/* Floor shadow */}
-      <div style={{
-        width: 70,
-        height: 14,
-        borderRadius: "50%",
-        background: "radial-gradient(ellipse, rgba(0,0,0,0.35) 0%, transparent 70%)",
-        marginTop: -4,
-        zIndex: 1,
-      }} />
-
-      {/* Name + level */}
-      <div style={{
-        marginTop: 8,
-        textAlign: "center",
-      }}>
+      {/* Name + role */}
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 16, fontWeight: 900, color: "white",
-          textShadow: "0 0 16px rgba(99,102,241,0.3)",
+          fontSize: 18, fontWeight: 900, color: "white",
+          letterSpacing: "-0.3px",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {player.name.split(" ")[0]}
         </div>
         <div style={{
-          fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.35)",
+          fontSize: 12, fontWeight: 600,
+          color: repColor,
           marginTop: 2,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
-          Lv.{toPersian(player.level)} · {player.scenario} · {toPersian(doneCount)}/{toPersian(totalTasks)}
+          {subLabel}
+        </div>
+      </div>
+
+      {/* Today's progress */}
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        gap: 3, flexShrink: 0,
+      }}>
+        <div style={{
+          fontSize: 20, fontWeight: 900,
+          color: doneCount >= totalTasks ? "#4ade80" : "rgba(255,255,255,0.7)",
+          fontVariantNumeric: "tabular-nums",
+        }}>
+          {toPersian(doneCount)}<span style={{ fontSize: 12, opacity: 0.4 }}>/{toPersian(totalTasks)}</span>
+        </div>
+        <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>
+          کار امروز
+        </div>
+        <div style={{ display: "flex", gap: 3 }}>
+          {Array.from({ length: totalTasks }).map((_, i) => (
+            <div key={i} style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: i < doneCount ? "#4ade80" : "rgba(255,255,255,0.12)",
+              transition: "background 0.3s",
+            }} />
+          ))}
         </div>
       </div>
     </div>

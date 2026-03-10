@@ -1,4 +1,5 @@
 import type { WavePhase } from "@/engine/types";
+import { WORK_INCOME_BASE, QUICK_INVEST } from "./economyConfig";
 
 export interface ActionEffect {
   key: string;       // player stat key: "energy", "happiness", "money", "xp", "stars", "health"
@@ -355,7 +356,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         emoji: "⏰",
         costs: { energy: 15, time: 240 },
         effects: [
-          { key: "money", value: 20_000_000, label: "💰 +۲۰M تومن" },
+          { key: "money", value: WORK_INCOME_BASE.part_time, label: "💰 +۱.۵M تومن" },
           { key: "xp", value: 3, label: "✨ +۳ تجربه" },
         ],
       },
@@ -365,7 +366,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         emoji: "💼",
         costs: { energy: 30, time: 480 },
         effects: [
-          { key: "money", value: 45_000_000, label: "💰 +۴۵M تومن" },
+          { key: "money", value: WORK_INCOME_BASE.full_shift, label: "💰 +۳M تومن" },
           { key: "xp", value: 5, label: "✨ +۵ تجربه" },
           { key: "stars", value: 1, label: "⭐ +۱ ستاره" },
         ],
@@ -376,7 +377,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         emoji: "🔥",
         costs: { energy: 50, time: 600 },
         effects: [
-          { key: "money", value: 70_000_000, label: "💰 +۷۰M تومن" },
+          { key: "money", value: WORK_INCOME_BASE.overtime, label: "💰 +۵M تومن" },
           { key: "xp", value: 8, label: "✨ +۸ تجربه" },
           { key: "stars", value: 2, label: "⭐ +۲ ستاره" },
         ],
@@ -477,14 +478,14 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         emoji: "🪙",
         costs: { money: 5_000_000, time: 15 },
         effects: [
-          { key: "money", value: 2_000_000, label: "💰 +۲M سود" },
+          { key: "money", value: QUICK_INVEST.small.grossReturn, label: "💰 +۷M بازده" },
           { key: "xp", value: 2, label: "✨ +۲ تجربه" },
         ],
         risk: {
-          chance: 0.4,
+          chance: QUICK_INVEST.small.riskChance,
           effect: "loss",
           label: "ضرر کردی! 📉",
-          penalty: { key: "money", value: -3_000_000 },
+          penalty: { key: "money", value: QUICK_INVEST.small.riskPenalty },
         },
         sponsoredVariant: {
           brandName: "نوبیتکس",
@@ -509,14 +510,14 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         emoji: "💹",
         costs: { money: 15_000_000, time: 30 },
         effects: [
-          { key: "money", value: 8_000_000, label: "💰 +۸M سود" },
+          { key: "money", value: QUICK_INVEST.medium.grossReturn, label: "💰 +۲۱M بازده" },
           { key: "xp", value: 5, label: "✨ +۵ تجربه" },
         ],
         risk: {
-          chance: 0.5,
+          chance: QUICK_INVEST.medium.riskChance,
           effect: "loss",
           label: "ضرر کردی! 📉",
-          penalty: { key: "money", value: -10_000_000 },
+          penalty: { key: "money", value: QUICK_INVEST.medium.riskPenalty },
         },
         sponsoredVariant: {
           brandName: "سهام‌یاب",
@@ -541,15 +542,15 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         emoji: "🏦",
         costs: { money: 30_000_000, time: 60 },
         effects: [
-          { key: "money", value: 20_000_000, label: "💰 +۲۰M سود" },
+          { key: "money", value: QUICK_INVEST.big.grossReturn, label: "💰 +۴۵M بازده" },
           { key: "xp", value: 10, label: "✨ +۱۰ تجربه" },
           { key: "stars", value: 2, label: "⭐ +۲ ستاره" },
         ],
         risk: {
-          chance: 0.6,
+          chance: QUICK_INVEST.big.riskChance,
           effect: "loss",
           label: "ضرر سنگین! 📉📉",
-          penalty: { key: "money", value: -25_000_000 },
+          penalty: { key: "money", value: QUICK_INVEST.big.riskPenalty },
         },
         sponsoredVariant: {
           brandName: "گلدمن",

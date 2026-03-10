@@ -1,21 +1,43 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Target, Briefcase, Building2, User } from "lucide-react";
+import { Home, Briefcase, TrendingUp, User } from "lucide-react";
 import { getMissionStats, toPersian, dailyMissions } from "@/data/mock";
 
 const tabs = [
-  { href: "/",         Icon: Home,      label: "خانه",       color: "#60a5fa" },
-  { href: "/missions", Icon: Target,    label: "ماموریت‌ها", color: "#facc15" },
-  { href: "/jobs",     Icon: Briefcase, label: "کار",        color: "#4ade80" },
-  { href: "/city",     Icon: Building2, label: "شهر",        color: "#fb923c" },
-  { href: "/profile",  Icon: User,      label: "من",         color: "#c084fc" },
+  {
+    href: "/",
+    Icon: Home,
+    label: "بازی",
+    color: "#60a5fa",
+    routes: ["/", "/fridge", "/city", "/opportunities", "/living", "/missions"],
+  },
+  {
+    href: "/jobs",
+    Icon: Briefcase,
+    label: "کار",
+    color: "#4ade80",
+    routes: ["/jobs", "/skills"],
+  },
+  {
+    href: "/bank",
+    Icon: TrendingUp,
+    label: "سرمایه",
+    color: "#f59e0b",
+    routes: ["/bank", "/stocks", "/market"],
+  },
+  {
+    href: "/profile",
+    Icon: User,
+    label: "من",
+    color: "#c084fc",
+    routes: ["/profile"],
+  },
 ];
 
 export default function BottomNav() {
   const path = usePathname();
-  const homeRoutes = ["/", "/fridge", "/skills", "/bank", "/living", "/market"];
-  const activeTab = homeRoutes.includes(path) ? "/" : path;
+  const activeTab = tabs.find((t) => t.routes.includes(path))?.href ?? "/";
   const stats = getMissionStats();
   const hasMissionBadge = stats.claimableCount > 0 || stats.activeCount > 0;
   const dailyDone = dailyMissions.filter(m => m.status === "done" || m.status === "claimable").length;
@@ -44,8 +66,8 @@ export default function BottomNav() {
 
       {tabs.map(({ href, Icon, label, color }) => {
         const isActive = activeTab === href;
-        const showBadge = href === "/missions" && !isActive && hasMissionBadge;
-        const isClaimable = href === "/missions" && stats.claimableCount > 0;
+        const showBadge = href === "/" && !isActive && hasMissionBadge;
+        const isClaimable = href === "/" && stats.claimableCount > 0;
 
         return (
           <Link
@@ -108,7 +130,7 @@ export default function BottomNav() {
             )}
 
             <div
-              className={href === "/missions" && hasMissionBadge && !isActive ? "anim-mission-glow mission-icon-tap" : ""}
+              className={href === "/" && hasMissionBadge && !isActive ? "anim-mission-glow mission-icon-tap" : ""}
               style={{
                 filter: isActive ? `drop-shadow(0 0 6px ${color}80)` : "none",
                 transition: "filter 0.15s ease",
@@ -117,7 +139,7 @@ export default function BottomNav() {
               <Icon
                 size={22}
                 strokeWidth={isActive ? 2.5 : 1.8}
-                color={isActive ? color : href === "/missions" && hasMissionBadge ? "#facc15" : "rgba(255,255,255,0.3)"}
+                color={isActive ? color : href === "/" && hasMissionBadge ? "#facc15" : "rgba(255,255,255,0.3)"}
               />
             </div>
             <span style={{

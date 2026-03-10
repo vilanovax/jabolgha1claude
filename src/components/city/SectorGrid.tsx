@@ -1,10 +1,11 @@
 "use client";
+import { useShallow } from "zustand/react/shallow";
 import { useCityStore } from "@/game/city/city-store";
 import { trendIcon, trendColor, getEconomyHealthLabelFa } from "@/game/city/city-helpers";
 import { toPersian } from "@/data/mock";
 
 export default function SectorGrid() {
-  const sectors = useCityStore((s) => Object.values(s.sectors));
+  const sectors = useCityStore(useShallow((s) => Object.values(s.sectors)));
   const currentWaveId = useCityStore((s) => s.currentWaveId);
   const waveRemainingDays = useCityStore((s) => s.waveRemainingDays);
   const economyHealth = useCityStore((s) => s.economyHealth);

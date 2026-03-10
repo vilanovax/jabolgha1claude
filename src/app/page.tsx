@@ -4,7 +4,6 @@ import Link from "next/link";
 import GameHUD from "@/components/home/GameHUD";
 import CharacterStage from "@/components/home/CharacterStage";
 import StoryBubble from "@/components/home/StoryBubble";
-import HeroActionButton from "@/components/home/HeroActionButton";
 import RoomObjects from "@/components/home/RoomObjects";
 import ActionBottomSheet from "@/components/home/ActionBottomSheet";
 import LeisureButton from "@/components/home/LeisureButton";
@@ -93,42 +92,39 @@ export default function HomePage() {
 
       {/* Main content */}
       <div className="page-enter" style={{
-        paddingTop: 80,
-        paddingBottom: "calc(var(--nav-h) + 16px)",
-        paddingLeft: 12,
-        paddingRight: 12,
+        paddingTop: 86,
+        paddingBottom: "calc(var(--nav-h) + 20px)",
+        paddingLeft: 14,
+        paddingRight: 14,
         position: "relative",
         zIndex: 2,
         display: "flex",
         flexDirection: "column",
-        gap: 12,
+        gap: 16,
       }}>
-        {/* 1. Character */}
+        {/* 1. Character — compact card */}
         <CharacterStage doneCount={done.length} />
 
-        {/* 2. Hero Mission Card */}
-        <RecommendedMissionBanner />
+        {/* 2. Main CTA — dominant action button */}
+        <LeisureButton />
 
-        {/* 3. Section label + room tier + shop button */}
-        <div style={{ padding: "0 8px", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.4)" }}>
-            اتاق
-          </span>
+        {/* 3. Room — header row with tier + upgrade */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.35)" }}>🏠 اتاق</span>
           {roomItems.length > 0 && (
             <span style={{
-              fontSize: 9, fontWeight: 700,
+              fontSize: 10, fontWeight: 700,
               color: getRoomTier(roomItems.length).color,
-              opacity: 0.8,
             }}>
-              · {getRoomTier(roomItems.length).nameFa}
+              {getRoomTier(roomItems.length).nameFa}
             </span>
           )}
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
           <button
             onClick={() => setShowRoomShop(true)}
             style={{
-              fontSize: 9, fontWeight: 800,
-              padding: "3px 10px", borderRadius: 10,
+              fontSize: 10, fontWeight: 800,
+              padding: "4px 12px", borderRadius: 10,
               background: "rgba(99,102,241,0.1)",
               color: "#818cf8",
               border: "1px solid rgba(99,102,241,0.2)",
@@ -139,42 +135,24 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* 4. Room objects (scene interaction) */}
+        {/* 4. Room objects — 2-column 110px interactive grid */}
         <RoomObjects
           done={done}
           onOpenAction={handleOpenAction}
           onEndDay={() => setShowEndOfDay(true)}
         />
 
-        {/* 6. Leisure: do something fun */}
-        <LeisureButton />
+        {/* 5. Mission of the day */}
+        <SectionDivider label="🎯 ماموریت" />
+        <RecommendedMissionBanner />
 
-        {/* 7. Section label: city */}
-        <div style={{
-          padding: "0 8px",
-          display: "flex", alignItems: "center", gap: 6,
-          marginTop: 4,
-        }}>
-          <span style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)" }}>
-            وضعیت شهر
-          </span>
-          <div style={{
-            flex: 1, height: 1,
-            background: "rgba(255,255,255,0.06)",
-          }} />
-        </div>
-
-        {/* 8. City event banner */}
+        {/* 6. City section */}
+        <SectionDivider label="🌆 وضعیت شهر" />
         <CityEventBanner />
-
-        {/* 8b. Opportunity widget */}
         <HomeOpportunityWidget />
 
-        {/* 9. Quick access hub */}
-        <div style={{ padding: "0 8px", display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-          <span style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.5)" }}>دسترسی سریع</span>
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
-        </div>
+        {/* 7. Quick access */}
+        <SectionDivider label="⚡ دسترسی سریع" />
         <QuickLinks onOpenPhone={() => setShowPhone(true)} onOpenBazaar={() => setShowBazaar(true)} />
       </div>
 
@@ -208,6 +186,15 @@ export default function HomePage() {
       <JomehBazaarSheet isOpen={showBazaar} onClose={() => setShowBazaar(false)} />
 
       <BottomNav />
+    </div>
+  );
+}
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.35)" }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
     </div>
   );
 }

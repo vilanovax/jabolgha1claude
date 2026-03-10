@@ -43,7 +43,8 @@ export default function LeisureButton() {
         onClick={handleClick}
         style={{
           width: "100%",
-          padding: "14px 20px",
+          minHeight: 72,
+          padding: "18px 20px",
           borderRadius: 20,
           border: "1.5px solid rgba(168,85,247,0.25)",
           background: "linear-gradient(135deg, rgba(168,85,247,0.15), rgba(236,72,153,0.1))",
@@ -62,9 +63,9 @@ export default function LeisureButton() {
           background: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 50%)",
           pointerEvents: "none",
         }} />
-        <span style={{ fontSize: 20 }}>🎲</span>
+        <span style={{ fontSize: 24 }}>🎲</span>
         <span style={{
-          fontSize: 14, fontWeight: 900, color: "white",
+          fontSize: 17, fontWeight: 900, color: "white",
           textShadow: "0 0 10px rgba(168,85,247,0.3)",
         }}>
           یه کاری کن!

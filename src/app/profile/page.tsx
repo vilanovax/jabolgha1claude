@@ -1,13 +1,9 @@
 "use client";
-import ProfileHero from "@/components/profile/ProfileHero";
-import ProfileXPBrand from "@/components/profile/ProfileXPBrand";
-import ProfileStats from "@/components/profile/ProfileStats";
-import ProfileLifePath from "@/components/profile/ProfileLifePath";
-import ProfileSkills from "@/components/profile/ProfileSkills";
-import ProfileRankings from "@/components/profile/ProfileRankings";
-import ProfileMissionArc from "@/components/profile/ProfileMissionArc";
-import ProfileRoom from "@/components/profile/ProfileRoom";
-import ProfileBadges from "@/components/profile/ProfileBadges";
+import PlayerHeroCard from "@/components/profile/PlayerHeroCard";
+import PlayerFocusCard from "@/components/profile/PlayerFocusCard";
+import ActiveMissionCard from "@/components/profile/ActiveMissionCard";
+import RoomPreviewCard from "@/components/profile/RoomPreviewCard";
+import AchievementsPreviewCard from "@/components/profile/AchievementsPreviewCard";
 import BottomNav from "@/components/layout/BottomNav";
 
 export default function ProfilePage() {
@@ -47,50 +43,18 @@ export default function ProfilePage() {
       </div>
 
       <div className="page-enter" style={{
-        paddingTop: 16,
+        paddingTop: 8,
         paddingBottom: "calc(var(--nav-h) + 16px)",
         paddingLeft: 12,
         paddingRight: 12,
         position: "relative",
         zIndex: 2,
       }}>
-        <ProfileHero />
-        <ProfileXPBrand />
-        <ProfileStats />
-        <ProfileLifePath />
-        <ProfileSkills />
-        <ProfileRankings />
-        <ProfileMissionArc />
-        <ProfileRoom />
-        <ProfileBadges />
-
-        {/* Action buttons */}
-        <div style={{
-          display: "flex", gap: 10, padding: "0 8px",
-        }}>
-          <button style={{
-            flex: 1, padding: "12px 0", borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.04)",
-            color: "rgba(255,255,255,0.5)",
-            fontSize: 12, fontWeight: 700,
-            fontFamily: "inherit", cursor: "pointer",
-            transition: "background 0.15s ease",
-          }}>
-            ✏️ ویرایش پروفایل
-          </button>
-          <button style={{
-            flex: 1, padding: "12px 0", borderRadius: 16,
-            border: "1px solid rgba(250,204,21,0.15)",
-            background: "rgba(250,204,21,0.06)",
-            color: "#facc15",
-            fontSize: 12, fontWeight: 700,
-            fontFamily: "inherit", cursor: "pointer",
-            transition: "background 0.15s ease",
-          }}>
-            🛍️ فروشگاه
-          </button>
-        </div>
+        <PlayerHeroCard />
+        <PlayerFocusCard />
+        <ActiveMissionCard />
+        <RoomPreviewCard />
+        <AchievementsPreviewCard />
       </div>
 
       <BottomNav />
