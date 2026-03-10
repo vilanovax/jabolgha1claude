@@ -18,19 +18,18 @@ export default function MarketAnalysis() {
     <>
       {/* Sector distribution */}
       <div style={{
-        borderRadius: 24, overflow: "hidden",
-        background: "white",
-        border: "1px solid rgba(0,0,0,0.04)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+        borderRadius: 20,
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.07)",
         marginBottom: 12,
       }}>
-        <div style={{ padding: "16px" }}>
+        <div style={{ padding: "14px" }}>
           <div style={{
-            fontSize: 14, fontWeight: 800, color: "#1e293b",
+            fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.5)",
             display: "flex", alignItems: "center", gap: 6,
-            marginBottom: 16,
+            marginBottom: 14,
           }}>
-            <span style={{ fontSize: 16 }}>📊</span> توزیع مشاغل شهر
+            <span style={{ fontSize: 14 }}>📊</span> توزیع مشاغل شهر
           </div>
 
           {sectors.map((s) => (
@@ -38,28 +37,27 @@ export default function MarketAnalysis() {
               <div style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5,
               }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{s.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>{s.name}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{
-                    fontSize: 10, fontWeight: 700, padding: "2px 8px",
-                    background: `${s.color}15`, color: s.color,
-                    borderRadius: "var(--r-full)", border: `1px solid ${s.color}30`,
+                    fontSize: 9, fontWeight: 700, padding: "2px 7px",
+                    background: `${s.color}18`, color: s.color,
+                    borderRadius: 8, border: `1px solid ${s.color}30`,
                   }}>{s.status}</span>
                   <span style={{
-                    fontSize: 12, fontWeight: 800, color: "#0f172a",
+                    fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.6)",
                     minWidth: 28, textAlign: "left" as const,
                   }}>{toPersian(s.pct)}٪</span>
                 </div>
               </div>
               <div style={{
-                background: "#f1f5f9", borderRadius: "var(--r-full)",
-                height: 6, overflow: "hidden",
+                background: "rgba(255,255,255,0.06)", borderRadius: 4,
+                height: 5, overflow: "hidden",
               }}>
                 <div style={{
                   width: `${s.pct}%`, height: "100%",
-                  borderRadius: "var(--r-full)",
+                  borderRadius: 4,
                   background: `linear-gradient(90deg, ${s.color}, ${s.color}cc)`,
-                  boxShadow: `0 0 6px ${s.color}40`,
                   transition: "width 0.5s ease",
                 }} />
               </div>
@@ -71,45 +69,39 @@ export default function MarketAnalysis() {
       {/* Market Insight */}
       <div style={{
         borderRadius: 20,
-        padding: "14px 16px",
-        background: "linear-gradient(135deg, rgba(139,92,246,0.06), rgba(168,85,247,0.03))",
-        border: "1.5px solid rgba(139,92,246,0.15)",
-        boxShadow: "0 4px 16px rgba(139,92,246,0.08)",
+        padding: "14px",
+        background: "rgba(139,92,246,0.07)",
+        border: "1px solid rgba(139,92,246,0.18)",
       }}>
         <div style={{
           display: "flex", alignItems: "center", gap: 8, marginBottom: 8,
         }}>
-          <span style={{ fontSize: 18 }}>🔮</span>
-          <div style={{
-            fontSize: 13, fontWeight: 800, color: "#6d28d9",
-          }}>
+          <span style={{ fontSize: 16 }}>🔮</span>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#a78bfa" }}>
             تحلیل بازار
           </div>
           <span style={{
-            fontSize: 9, fontWeight: 700, padding: "2px 8px",
-            borderRadius: 8,
-            background: "linear-gradient(135deg, #8b5cf6, #a855f7)",
-            color: "white",
+            fontSize: 8, fontWeight: 700, padding: "2px 7px",
+            borderRadius: 7,
+            background: "rgba(139,92,246,0.3)",
+            color: "#c4b5fd",
             marginRight: "auto",
           }}>
             PRO
           </span>
         </div>
         <div style={{
-          fontSize: 12, color: "#475569", lineHeight: 1.7, marginBottom: 10,
+          fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: 10,
         }}>
           {marketInsight.text}
         </div>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8,
-        }}>
-          <span style={{ fontSize: 10, fontWeight: 600, color: "#8b5cf6" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(167,139,250,0.7)" }}>
             اطمینان تحلیل:
           </span>
           <div style={{
-            flex: 1, height: 4, borderRadius: 2,
-            background: "rgba(139,92,246,0.1)",
-            overflow: "hidden",
+            flex: 1, height: 3, borderRadius: 2,
+            background: "rgba(139,92,246,0.15)", overflow: "hidden",
           }}>
             <div style={{
               width: `${marketInsight.confidence}%`,
@@ -118,9 +110,7 @@ export default function MarketAnalysis() {
               transition: "width 0.6s ease",
             }} />
           </div>
-          <span style={{
-            fontSize: 10, fontWeight: 700, color: "#6d28d9",
-          }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa" }}>
             {toPersian(marketInsight.confidence)}٪
           </span>
         </div>

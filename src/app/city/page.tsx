@@ -57,7 +57,7 @@ export default function CityPage() {
   );
 
   return (
-    <div className="game-bg" style={{ minHeight: "100dvh" }}>
+    <div className="scene-bg" style={{ minHeight: "100dvh" }}>
       <TopHeader />
 
       <div className="page-enter" style={{
@@ -155,55 +155,55 @@ export default function CityPage() {
         {/* Tab 2: Ranking */}
         {tab === 2 && (
           <div style={{
-            borderRadius: 24, overflow: "hidden",
-            background: "white",
-            border: "1px solid rgba(0,0,0,0.04)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+            borderRadius: 20,
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.07)",
           }}>
-            <div style={{ padding: "16px" }}>
+            <div style={{ padding: "14px 14px 10px" }}>
               <div style={{
-                fontSize: 14, fontWeight: 800, color: "#1e293b",
+                fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.5)",
                 display: "flex", alignItems: "center", gap: 6,
-                marginBottom: 14,
+                marginBottom: 12,
               }}>
-                <span style={{ fontSize: 16 }}>🏆</span> ثروتمندترین‌های شهر
+                <span style={{ fontSize: 14 }}>🏆</span> ثروتمندترین‌های شهر
               </div>
 
               {cityPlayers.map((p) => (
                 <div key={p.rank} style={{
                   display: "flex", alignItems: "center", gap: 12,
-                  padding: "12px 14px", marginBottom: 8,
-                  borderRadius: 16,
+                  padding: "10px 12px", marginBottom: 6,
+                  borderRadius: 14,
                   background: p.isMe
-                    ? "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.03))"
-                    : p.rank <= 3 ? "linear-gradient(135deg, rgba(212,168,67,0.06), transparent)" : "transparent",
-                  border: p.isMe ? "1.5px solid rgba(59,130,246,0.2)" : p.rank <= 3 ? "1px solid rgba(212,168,67,0.1)" : "1px solid transparent",
+                    ? "rgba(99,102,241,0.1)"
+                    : p.rank <= 3 ? "rgba(212,168,67,0.07)" : "rgba(255,255,255,0.02)",
+                  border: p.isMe
+                    ? "1px solid rgba(99,102,241,0.25)"
+                    : p.rank <= 3 ? "1px solid rgba(212,168,67,0.15)" : "1px solid rgba(255,255,255,0.05)",
                 }}>
                   <div style={{
-                    width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                    width: 30, height: 30, borderRadius: 10, flexShrink: 0,
                     background: p.rank <= 3
                       ? "linear-gradient(135deg, #D4A843, #F0C966)"
-                      : p.isMe ? "linear-gradient(135deg, #3b82f6, #60a5fa)" : "#f1f5f9",
+                      : p.isMe ? "rgba(99,102,241,0.4)" : "rgba(255,255,255,0.06)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: p.rank <= 3 ? 16 : 12, fontWeight: 800,
-                    color: p.rank <= 3 || p.isMe ? "white" : "#64748b",
-                    boxShadow: p.rank <= 3 ? "0 4px 12px rgba(212,168,67,0.3)" : "none",
+                    fontSize: p.rank <= 3 ? 14 : 11, fontWeight: 800,
+                    color: "white",
+                    boxShadow: p.rank <= 3 ? "0 3px 10px rgba(212,168,67,0.3)" : "none",
                   }}>
                     {p.rank <= 3 ? p.badge : toPersian(p.rank)}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{
-                      fontSize: 13, fontWeight: p.isMe ? 800 : 600,
-                      color: p.isMe ? "#2563eb" : "#0f172a",
+                      fontSize: 12, fontWeight: p.isMe ? 800 : 600,
+                      color: p.isMe ? "#818cf8" : "rgba(255,255,255,0.75)",
                     }}>
-                      {p.name} {p.isMe && "(من)"}
+                      {p.name} {p.isMe && <span style={{ fontSize: 10, color: "#818cf8" }}>(من)</span>}
                     </div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>{p.title}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>{p.title}</div>
                   </div>
                   <div style={{
-                    fontSize: 13, fontWeight: 800,
-                    color: p.rank <= 3 ? "#D4A843" : "#0f172a",
-                    textShadow: p.rank <= 3 ? "0 0 8px rgba(212,168,67,0.2)" : "none",
+                    fontSize: 12, fontWeight: 800,
+                    color: p.rank <= 3 ? "#D4A843" : "rgba(255,255,255,0.6)",
                   }}>
                     {formatMoney(p.netWorth)}
                   </div>
