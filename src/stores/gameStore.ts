@@ -21,6 +21,8 @@ import type { DailyCard } from "@/data/dailyCards";
 import { COURSE_CATALOG } from "@/data/mock";
 import { FOOD_CATALOG, FRIDGE_TIERS } from "@/data/fridgeData";
 import type { FridgeSlot } from "@/data/fridgeData";
+import { BRAND_MODIFIERS } from "@/data/brandModifiers";
+import { detectCombo } from "@/data/foodCombos";
 import { HOUSING_TIERS, VEHICLE_TIERS, MOBILE_PLANS, calculateWeeklyBills } from "@/data/livingCosts";
 import type { BillInflationMultipliers } from "@/data/livingCosts";
 import { MARKET_ITEMS, generateNpcListings } from "@/data/marketplaceData";
@@ -239,7 +241,7 @@ interface GameState {
   changeMobilePlan: (planId: string) => { success: boolean; reason?: string };
   // Fridge
   buyFood: (foodId: string) => { success: boolean; reason?: string };
-  eatFood: (slotIndex: number) => { success: boolean; effects?: { energy: number; happiness: number; health: number }; reason?: string };
+  eatFood: (slotIndex: number) => { success: boolean; effects?: { energy: number; happiness: number; health: number }; spoiled?: boolean; mealType?: string; combo?: import("@/data/foodCombos").FoodCombo; reason?: string };
   trashFood: (slotIndex: number) => void;
   upgradeFridge: (tierId: string) => { success: boolean; reason?: string };
   clearExpiredItems: () => { expiredNames: string[] };
@@ -655,13 +657,42 @@ export const useGameStore = create<GameState>()(
             // food deliveries handled separately if needed
           }
 
-          // ─── Fridge: expire items ───
-          const newFridgeItems = state.fridge.items.filter(
-            (slot) => newPlayer.dayInGame <= slot.expiresOnDay,
-          );
-          const expiredCount = state.fridge.items.length - newFridgeItems.length;
-          if (expiredCount > 0) {
-            newPlayer.happiness = Math.max(0, newPlayer.happiness - expiredCount * 2);
+          // ─── Hunger system ───
+          const meals = state.player.mealsToday ?? { breakfast: false, lunch: false, dinner: false, snackCount: 0 };
+          const mealsEaten = [meals.breakfast, meals.lunch, meals.dinner].filter(Boolean).length
+            + Math.min(meals.snackCount, 2);
+          if (mealsEaten === 0) {
+            newPlayer.energy  = Math.max(0, newPlayer.energy - 25);
+            newPlayer.health  = Math.max(0, (newPlayer.health ?? 80) - 8);
+          } else if (mealsEaten === 1) {
+            newPlayer.energy  = Math.max(0, newPlayer.energy - 12);
+            newPlayer.health  = Math.max(0, (newPlayer.health ?? 80) - 3);
+          } else if (mealsEaten === 2) {
+            newPlayer.energy  = Math.max(0, newPlayer.energy - 5);
+          }
+          // 3+ meals → small health bonus
+          if (mealsEaten >= 3) {
+            newPlayer.health = Math.min(100, (newPlayer.health ?? 80) + 2);
+          }
+          // Reset meals for new day
+          newPlayer.mealsToday = { breakfast: false, lunch: false, dinner: false, snackCount: 0 };
+          newPlayer.currentMealHistory = [];
+
+          // ─── Fridge: mark newly spoiled (don't delete — let player choose) ───
+          const currentTierForExpiry = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId)!;
+          const hasWasteReduction = currentTierForExpiry?.smartFeatures?.includes("waste_reduction");
+          const newFridgeItems = state.fridge.items.map((slot) => {
+            if (!slot.spoiled && newPlayer.dayInGame > slot.expiresOnDay) {
+              return { ...slot, spoiled: true };
+            }
+            return slot;
+          });
+          const newlySpoiledCount = newFridgeItems.filter(
+            (s, i) => s.spoiled && !state.fridge.items[i].spoiled,
+          ).length;
+          if (newlySpoiledCount > 0) {
+            const penalty = hasWasteReduction ? 1 : 2;
+            newPlayer.happiness = Math.max(0, newPlayer.happiness - newlySpoiledCount * penalty);
           }
 
           // ─── Daily Reward generation ───
@@ -1236,14 +1267,27 @@ export const useGameStore = create<GameState>()(
           return { success: false, reason: "موجودی کافی نیست! 💰" };
         }
 
+        // Apply brand modifier for shelf life
+        const brandMod = BRAND_MODIFIERS[food.brand ?? ""];
+        const shelfLifeBoost = (tier.smartFeatures?.includes("shelf_life_boost") ? 1 : 0)
+          + (brandMod?.shelfLifeBonus ?? 0);
+
+        // Apply brand price discount
+        const brandDiscount = brandMod?.priceDiscount ?? 1;
+        const finalPrice = Math.round(actualPrice * brandDiscount);
+        if (state.bank.checking < finalPrice) {
+          return { success: false, reason: "موجودی کافی نیست! 💰" };
+        }
+
         const slot: FridgeSlot = {
           foodId,
           addedOnDay: state.player.dayInGame,
-          expiresOnDay: state.player.dayInGame + food.baseShelfLife + tier.shelfLifeBonus,
+          expiresOnDay: state.player.dayInGame + food.baseShelfLife + tier.shelfLifeBonus + shelfLifeBoost,
+          spoiled: false,
         };
 
         set({
-          bank: { ...state.bank, checking: state.bank.checking - actualPrice },
+          bank: { ...state.bank, checking: state.bank.checking - finalPrice },
           fridge: { ...state.fridge, items: [...state.fridge.items, slot] },
         });
         return { success: true };
@@ -1257,27 +1301,78 @@ export const useGameStore = create<GameState>()(
         const food = FOOD_CATALOG.find((f) => f.id === slot.foodId);
         if (!food) return { success: false, reason: "آیتم نامعتبر" };
 
-        if (state.player.dayInGame > slot.expiresOnDay) {
-          // Expired — auto-trash
-          const newItems = state.fridge.items.filter((_, i) => i !== slotIndex);
-          set({ fridge: { ...state.fridge, items: newItems } });
-          return { success: false, reason: "تاریخ مصرف گذشته! دور انداخته شد 🗑️" };
+        const newPlayer = { ...state.player };
+        const newItems = state.fridge.items.filter((_, i) => i !== slotIndex);
+        const isSpoiled = slot.spoiled || state.player.dayInGame > slot.expiresOnDay;
+
+        if (isSpoiled) {
+          // Spoiled — apply penalty instead of normal effects
+          const penalty = food.spoiledPenalty ?? { energy: -8, health: -12, happiness: -5 };
+          newPlayer.energy    = Math.max(0, newPlayer.energy + penalty.energy);
+          newPlayer.health    = Math.max(0, Math.min(100, (newPlayer.health ?? 80) + penalty.health));
+          newPlayer.happiness = Math.max(0, newPlayer.happiness + (penalty.happiness ?? 0));
+          set({ player: newPlayer, fridge: { ...state.fridge, items: newItems } });
+          return { success: true, spoiled: true, effects: penalty };
         }
 
-        const newPlayer = { ...state.player };
-        newPlayer.energy = Math.min(100, newPlayer.energy + food.effects.energy);
-        newPlayer.happiness = Math.min(100, newPlayer.happiness + food.effects.happiness);
-        newPlayer.health = Math.max(0, Math.min(100, (newPlayer.health ?? 80) + food.effects.health));
+        // Brand modifier on effects
+        const brandMod = BRAND_MODIFIERS[food.brand ?? ""];
+        const finalEffects = {
+          energy:    food.effects.energy    + (brandMod?.effectBonus?.energy    ?? 0),
+          happiness: food.effects.happiness + (brandMod?.effectBonus?.happiness ?? 0),
+          health:    food.effects.health    + (brandMod?.effectBonus?.health    ?? 0),
+        };
 
-        const newItems = state.fridge.items.filter((_, i) => i !== slotIndex);
+        newPlayer.energy    = Math.min(100, newPlayer.energy + finalEffects.energy);
+        newPlayer.happiness = Math.min(100, newPlayer.happiness + finalEffects.happiness);
+        newPlayer.health    = Math.max(0, Math.min(100, (newPlayer.health ?? 80) + finalEffects.health));
+
+        // Track meals today (first meal = breakfast, second = lunch, third = dinner, rest = snack)
+        const meals = newPlayer.mealsToday ?? { breakfast: false, lunch: false, dinner: false, snackCount: 0 };
+        let mealType = "snack";
+        if (!meals.breakfast) {
+          newPlayer.mealsToday = { ...meals, breakfast: true };
+          mealType = "breakfast";
+        } else if (!meals.lunch) {
+          newPlayer.mealsToday = { ...meals, lunch: true };
+          mealType = "lunch";
+        } else if (!meals.dinner) {
+          newPlayer.mealsToday = { ...meals, dinner: true };
+          mealType = "dinner";
+        } else {
+          newPlayer.mealsToday = { ...meals, snackCount: Math.min(3, meals.snackCount + 1) };
+        }
+
+        // Combo detection
+        const mealHistory = newPlayer.currentMealHistory ?? [];
+        const combo = detectCombo(food.id, mealHistory);
+        if (combo) {
+          const mul = brandMod?.comboBonus ?? 1;
+          newPlayer.energy    = Math.min(100, newPlayer.energy    + Math.round((combo.bonus.energy    ?? 0) * mul));
+          newPlayer.happiness = Math.min(100, newPlayer.happiness + Math.round((combo.bonus.happiness ?? 0) * mul));
+          newPlayer.health    = Math.max(0, Math.min(100, newPlayer.health + Math.round((combo.bonus.health ?? 0) * mul)));
+        }
+        newPlayer.currentMealHistory = [...mealHistory, food.id];
+
         set({ player: newPlayer, fridge: { ...state.fridge, items: newItems } });
-        return { success: true, effects: food.effects };
+        return { success: true, effects: finalEffects, mealType, combo: combo ?? undefined };
       },
 
       trashFood: (slotIndex) => {
         const state = get();
+        const slot = state.fridge.items[slotIndex];
+        const currentTierForTrash = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId);
+        const hasWasteReduction = currentTierForTrash?.smartFeatures?.includes("waste_reduction");
+        // Small happiness penalty for throwing away food (less for smart fridge)
+        const wastedPenalty = slot?.spoiled ? 0 : (hasWasteReduction ? 1 : 2);
         const newItems = state.fridge.items.filter((_, i) => i !== slotIndex);
-        set({ fridge: { ...state.fridge, items: newItems } });
+        set({
+          fridge: { ...state.fridge, items: newItems },
+          player: {
+            ...state.player,
+            happiness: Math.max(0, state.player.happiness - wastedPenalty),
+          },
+        });
       },
 
       upgradeFridge: (tierId) => {
@@ -1565,26 +1660,34 @@ export const useGameStore = create<GameState>()(
       },
 
       clearExpiredItems: () => {
+        // Mark newly expired items as spoiled (don't delete — player chooses)
         const state = get();
-        const expired = state.fridge.items.filter(
-          (slot) => state.player.dayInGame > slot.expiresOnDay,
+        const newlyExpired = state.fridge.items.filter(
+          (slot) => !slot.spoiled && state.player.dayInGame > slot.expiresOnDay,
         );
-        if (expired.length === 0) return { expiredNames: [] };
+        if (newlyExpired.length === 0) return { expiredNames: [] };
 
-        const expiredNames = expired.map((slot) => {
+        const expiredNames = newlyExpired.map((slot) => {
           const food = FOOD_CATALOG.find((f) => f.id === slot.foodId);
           return food ? food.name : slot.foodId;
         });
 
-        const remaining = state.fridge.items.filter(
-          (slot) => state.player.dayInGame <= slot.expiresOnDay,
+        const updatedItems = state.fridge.items.map((slot) =>
+          !slot.spoiled && state.player.dayInGame > slot.expiresOnDay
+            ? { ...slot, spoiled: true }
+            : slot,
         );
-        const newPlayer = { ...state.player };
-        newPlayer.happiness = Math.max(0, newPlayer.happiness - expired.length * 2);
+
+        const currentTierForClear = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId);
+        const hasWasteReduction = currentTierForClear?.smartFeatures?.includes("waste_reduction");
+        const penalty = hasWasteReduction ? 1 : 2;
 
         set({
-          fridge: { ...state.fridge, items: remaining },
-          player: newPlayer,
+          fridge: { ...state.fridge, items: updatedItems },
+          player: {
+            ...state.player,
+            happiness: Math.max(0, state.player.happiness - newlyExpired.length * penalty),
+          },
         });
         return { expiredNames };
       },

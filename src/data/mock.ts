@@ -15,6 +15,14 @@ export const player = {
   stars: 18,
   scenario: "فارغ‌التحصیل",
   dayInGame: 47,
+  // ─── Food / Hunger ───
+  mealsToday: {
+    breakfast: false,
+    lunch: false,
+    dinner: false,
+    snackCount: 0,
+  },
+  currentMealHistory: [] as string[],  // foodIds eaten this session; resets each day
 };
 
 export type MissionStatus = "pending" | "in_progress" | "done" | "claimable";
