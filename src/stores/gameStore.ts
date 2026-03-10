@@ -28,6 +28,7 @@ import type { MarketListing } from "@/data/marketplaceData";
 import { LEISURE_ACTIVITIES } from "@/data/leisureData";
 import type { LeisureActivity } from "@/data/leisureData";
 import { ROOM_ITEMS, getRoomBuffs } from "@/data/roomItems";
+import { getStreakReward, getStreakWorkBonus } from "@/data/streakRewards";
 import { dispatchGameplayEvent } from "@/game/events/eventBus";
 import { getActionEvents } from "@/game/actions/actionEventMap";
 import { WORK_DAYS_PER_MONTH } from "@/data/economyConfig";
@@ -264,6 +265,18 @@ interface GameState {
   // Daily Hook actions
   claimDailyReward: () => { energy?: number; money?: number };
   buyDailyDeal: (dealId: string) => { success: boolean; reason?: string };
+
+  // Streak system
+  streak: {
+    currentStreak: number;
+    longestStreak: number;
+    lastClaimDay: number;    // dayInGame of last claim (-1 = never)
+    shieldAvailable: boolean;
+    claimed: boolean;        // claimed today's streak reward?
+    tickets: number;         // luck tickets (from streak)
+    coupons: number;         // market coupons (from streak)
+  };
+  claimStreakReward: () => { reward: import("@/data/streakRewards").StreakRewardDef; shieldUsed: boolean } | null;
 }
 
 export const useGameStore = create<GameState>()(
@@ -332,6 +345,17 @@ export const useGameStore = create<GameState>()(
       dailyReward: null,
       dailyDeals: [],
 
+      // Streak initial state
+      streak: {
+        currentStreak: 0,
+        longestStreak: 0,
+        lastClaimDay: -1,
+        shieldAvailable: true,
+        claimed: false,
+        tickets: 0,
+        coupons: 0,
+      },
+
       setRunning: (v) => set({ isRunning: v }),
 
       // ─── Onboarding actions ───────────────────────────────────────────────
@@ -395,6 +419,75 @@ export const useGameStore = create<GameState>()(
           dailyDeals: st.dailyDeals.map((d) => d.id === dealId ? { ...d, sold: true } : d),
         }));
         return { success: true };
+      },
+
+      claimStreakReward: () => {
+        const s = get();
+        if (s.streak.claimed) return null;
+
+        const dayInGame = s.player.dayInGame;
+        const daysSinceLast = s.streak.lastClaimDay === -1 ? 1 : dayInGame - s.streak.lastClaimDay;
+
+        let currentStreak = s.streak.currentStreak;
+        let shieldAvailable = s.streak.shieldAvailable;
+        let shieldUsed = false;
+
+        if (daysSinceLast > 1) {
+          if (shieldAvailable) {
+            shieldUsed = true;
+            shieldAvailable = false;
+            // streak preserved
+          } else {
+            currentStreak = 0;
+          }
+        }
+
+        const newStreak = currentStreak + 1;
+        const reward = getStreakReward(newStreak);
+
+        // Apply reward
+        set((st) => {
+          const newPlayer = { ...st.player };
+          const newBank = { ...st.bank };
+          let newRoomItems = [...(st.roomItems ?? [])];
+          let newTickets = st.streak.tickets;
+          let newCoupons = st.streak.coupons;
+          let replenishShield = shieldAvailable;
+
+          if (reward.type === "energy") {
+            newPlayer.energy = Math.min(100, newPlayer.energy + reward.amount);
+          } else if (reward.type === "money") {
+            newBank.checking += reward.amount;
+          } else if (reward.type === "xp") {
+            newPlayer.xp = newPlayer.xp + reward.amount;
+          } else if (reward.type === "ticket") {
+            newTickets += 1;
+          } else if (reward.type === "coupon") {
+            newCoupons += 1;
+          } else if (reward.type === "room_item") {
+            if (!newRoomItems.includes(reward.itemId)) {
+              newRoomItems = [...newRoomItems, reward.itemId];
+            }
+            if (newStreak === 30) replenishShield = true;
+          }
+
+          return {
+            player: newPlayer,
+            bank: newBank,
+            roomItems: newRoomItems,
+            streak: {
+              currentStreak: newStreak,
+              longestStreak: Math.max(newStreak, st.streak.longestStreak),
+              lastClaimDay: dayInGame,
+              shieldAvailable: replenishShield,
+              claimed: true,
+              tickets: newTickets,
+              coupons: newCoupons,
+            },
+          };
+        });
+
+        return { reward, shieldUsed };
       },
 
       startNextDay: () => {
@@ -612,6 +705,7 @@ export const useGameStore = create<GameState>()(
             roomItems: newRoomItems,
             dailyReward: newDailyReward,
             dailyDeals: newDailyDeals,
+            streak: { ...state.streak, claimed: false },
           };
         });
 
@@ -821,15 +915,17 @@ export const useGameStore = create<GameState>()(
           if (categoryId === "work" && state.job?.salary) {
             const perShiftBase = state.job.salary / WORK_DAYS_PER_MONTH;
             const shiftMul = WORK_SHIFT_MULTIPLIERS[baseOption.id] ?? 1.0;
-            const salaryIncome = Math.round(perShiftBase * shiftMul * roomBuffs.workIncomeMultiplier);
+            const streakBonus = getStreakWorkBonus(state.streak?.currentStreak ?? 0);
+            const salaryIncome = Math.round(perShiftBase * shiftMul * roomBuffs.workIncomeMultiplier * (1 + streakBonus));
             return activeEffects.map((e) =>
               e.key === "money" ? { ...e, value: salaryIncome } : e
             );
           }
-          // No active job: apply room buff to base income
+          // No active job: apply room buff + streak bonus to base income
           if (categoryId === "work") {
+            const streakBonus = getStreakWorkBonus(state.streak?.currentStreak ?? 0);
             return activeEffects.map((e) =>
-              e.key === "money" ? { ...e, value: Math.round(e.value * roomBuffs.workIncomeMultiplier) } : e
+              e.key === "money" ? { ...e, value: Math.round(e.value * roomBuffs.workIncomeMultiplier * (1 + streakBonus)) } : e
             );
           }
           return activeEffects;

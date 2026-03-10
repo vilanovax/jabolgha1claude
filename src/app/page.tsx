@@ -14,6 +14,7 @@ import OnboardingFirstWin from "@/components/onboarding/OnboardingFirstWin";
 import OnboardingGift from "@/components/onboarding/OnboardingGift";
 import OnboardingNextStep from "@/components/onboarding/OnboardingNextStep";
 import DailyHookCard from "@/components/home/DailyHookCard";
+import StreakCard from "@/components/home/StreakCard";
 import EndOfDaySummary from "@/components/home/EndOfDaySummary";
 import DailyCardModal from "@/components/home/DailyCardModal";
 import RoomShop from "@/components/home/RoomShop";
@@ -120,7 +121,10 @@ export default function HomePage() {
         {/* 2. Delivery status — only when pending */}
         <DeliveryWidget />
 
-        {/* 3. Daily hook — today's reward, mission, city signal, deals */}
+        {/* 3. Streak card */}
+        <StreakCard />
+
+        {/* 4. Daily hook — today's reward, mission, city signal, deals */}
         <DailyHookCard />
 
         {/* 4. Mission of the day */}
