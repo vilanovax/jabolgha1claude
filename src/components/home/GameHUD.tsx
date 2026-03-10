@@ -68,6 +68,13 @@ function getPhase(n: number) {
   return PHASES[3];
 }
 
+// ─── Meal dots ────────────────────────────────────────────────────────────────
+const MEALS = [
+  { key: "breakfast" as const, emoji: "🌅", label: "صبحانه" },
+  { key: "lunch"     as const, emoji: "☀️",  label: "ناهار"  },
+  { key: "dinner"    as const, emoji: "🌙", label: "شام"    },
+];
+
 // ─── GameHUD ──────────────────────────────────────────────────────────────────
 export default function GameHUD({ onEndDay }: { onEndDay: () => void }) {
   const player  = useGameStore((s) => s.player);
@@ -165,6 +172,75 @@ export default function GameHUD({ onEndDay }: { onEndDay: () => void }) {
             <StatBar icon="🍔" value={player.hunger}       warn={player.hunger < 30}         barColor="#4ade80" />
           </div>
         </div>
+
+        {/* ── Row 3: Meal dots ── */}
+        {(() => {
+          const meals = player.mealsToday ?? { breakfast: false, lunch: false, dinner: false, snackCount: 0 };
+          const totalEaten = [meals.breakfast, meals.lunch, meals.dinner].filter(Boolean).length + Math.min(meals.snackCount, 2);
+          const allDone = meals.breakfast && meals.lunch && meals.dinner;
+          return (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              paddingTop: 2, borderTop: "1px solid rgba(255,255,255,0.05)",
+            }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.2)", flex: 1 }}>
+                وعده‌های امروز
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                {MEALS.map(({ key, emoji }) => {
+                  const done = meals[key];
+                  return (
+                    <div key={key} style={{
+                      display: "flex", alignItems: "center", gap: 2,
+                      padding: "2px 7px", borderRadius: 8,
+                      background: done ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${done ? "rgba(74,222,128,0.25)" : "rgba(255,255,255,0.06)"}`,
+                    }}>
+                      <span style={{ fontSize: 9 }}>{emoji}</span>
+                      <span style={{
+                        fontSize: 9, fontWeight: 800,
+                        color: done ? "#4ade80" : "rgba(255,255,255,0.2)",
+                      }}>
+                        {done ? "✓" : "·"}
+                      </span>
+                    </div>
+                  );
+                })}
+                {meals.snackCount > 0 && (
+                  <div style={{
+                    padding: "2px 7px", borderRadius: 8,
+                    background: "rgba(251,146,60,0.08)",
+                    border: "1px solid rgba(251,146,60,0.2)",
+                    fontSize: 9, fontWeight: 800, color: "#fb923c",
+                  }}>
+                    +{toPersian(meals.snackCount)} 🍿
+                  </div>
+                )}
+              </div>
+              {/* Penalty warning if no meals */}
+              {totalEaten === 0 && (
+                <span style={{
+                  fontSize: 8, fontWeight: 800, color: "#f87171",
+                  background: "rgba(248,113,113,0.08)",
+                  border: "1px solid rgba(248,113,113,0.2)",
+                  borderRadius: 6, padding: "1px 6px",
+                }}>
+                  ⚠️ نخوردی!
+                </span>
+              )}
+              {allDone && (
+                <span style={{
+                  fontSize: 8, fontWeight: 800, color: "#4ade80",
+                  background: "rgba(74,222,128,0.08)",
+                  border: "1px solid rgba(74,222,128,0.2)",
+                  borderRadius: 6, padding: "1px 6px",
+                }}>
+                  ✅ کامل
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

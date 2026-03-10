@@ -134,7 +134,9 @@ BottomNav.tsx   ← ناوبری پایین (home، ماموریت‌ها، فر
 | `roomItems.ts` | **جدید** — RoomItem catalog (13 آیتم، ۵ دسته، ۴ tier)، `getRoomBuffs()` |
 | `vendors.ts` | **جدید** — VendorDefinition (4 vendor)، priceMultiplier، deliveryDays |
 | `purchasables.ts` | **جدید** — PurchasableItem، adapter از room/market/food، `getPurchasablesForVendor()` |
-| `fridgeData.ts` | FOOD_CATALOG (30+)، FRIDGE_TIERS |
+| `fridgeData.ts` | FOOD_CATALOG (24 آیتم)، FRIDGE_TIERS (7 tier)، SmartFeature enum، FoodQuality |
+| `brandModifiers.ts` | **جدید** — BRAND_MODIFIERS: shelf life، effect bonus، price/delivery discount |
+| `foodCombos.ts` | **جدید** — 9 کومبو، `detectCombo()` |
 | `livingCosts.ts` | HOUSING_TIERS، `calculateWeeklyBills(BillInflationMultipliers)` |
 | `loanTypes.ts` | LOAN_TYPES، `calculateMonthlyPayment()` |
 | `dailyCards.ts` | ۳۰+ کارت رویداد، `drawRandomCard()` |
@@ -351,15 +353,17 @@ bulk_trade:      خرید عمده → فروش مجدد (any non-setback)
 
 ### State اصلی:
 ```typescript
-player:            { level, energy, hunger, happiness, health, xp, stars, dayInGame, ... }
+player:            { level, energy, hunger, happiness, health, xp, stars, dayInGame,
+                     mealsToday: {breakfast, lunch, dinner, snackCount},  // جدید
+                     currentMealHistory: string[] }                        // جدید
 bank:              { checking, savings, loans, savingsInterestRate, ... }
 job:               { title, salary, type, ... }
 skills:            { hard: Skill[], soft: Skill[] }
 living:            { housingId, vehicleId, mobilePlanId, lastBillDay }
-fridge:            { tierId, items: FridgeSlot[] }
+fridge:            { tierId, items: FridgeSlot[] }   // FridgeSlot.spoiled جدید
 inventory:         string[]         // MarketItem IDs
-roomItems:         string[]         // RoomItem IDs — جدید
-pendingDeliveries: PendingDelivery[] // سفارش‌های در راه — جدید
+roomItems:         string[]         // RoomItem IDs
+pendingDeliveries: PendingDelivery[] // سفارش‌های در راه
 ```
 
 ### اکشن‌های کلیدی:

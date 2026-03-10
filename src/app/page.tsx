@@ -15,6 +15,7 @@ import OnboardingGift from "@/components/onboarding/OnboardingGift";
 import OnboardingNextStep from "@/components/onboarding/OnboardingNextStep";
 import DailyHookCard from "@/components/home/DailyHookCard";
 import StreakCard from "@/components/home/StreakCard";
+import CityNewsCard from "@/components/home/CityNewsCard";
 import EndOfDaySummary from "@/components/home/EndOfDaySummary";
 import DailyCardModal from "@/components/home/DailyCardModal";
 import RoomShop from "@/components/home/RoomShop";
@@ -126,6 +127,9 @@ export default function HomePage() {
 
         {/* 4. Daily hook — today's reward, mission, city signal, deals */}
         <DailyHookCard />
+
+        {/* 5. City news — wave headline, active events, sector bars */}
+        <CityNewsCard />
 
         {/* 4. Mission of the day */}
         <div>
