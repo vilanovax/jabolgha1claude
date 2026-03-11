@@ -287,6 +287,9 @@ interface GameState {
   claimDailyReward: () => { energy?: number; money?: number };
   buyDailyDeal: (dealId: string) => { success: boolean; reason?: string };
 
+  // Day snapshot (set at start of each new day, used by EndOfDaySummary for deltas)
+  daySnapshot: { checking: number; xp: number };
+
   // Streak system
   streak: {
     currentStreak: number;
@@ -365,6 +368,9 @@ export const useGameStore = create<GameState>()(
       // Daily Hook initial state
       dailyReward: null,
       dailyDeals: [],
+
+      // Day snapshot initial state
+      daySnapshot: { checking: seedBank.checking, xp: 0 },
 
       // Streak initial state
       streak: {
@@ -753,6 +759,7 @@ export const useGameStore = create<GameState>()(
             dailyReward: newDailyReward,
             dailyDeals: newDailyDeals,
             streak: { ...state.streak, claimed: false },
+            daySnapshot: { checking: newBank.checking, xp: newPlayer.xp },
           };
         });
 
