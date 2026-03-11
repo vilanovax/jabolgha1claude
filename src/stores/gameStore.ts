@@ -679,7 +679,7 @@ export const useGameStore = create<GameState>()(
           newPlayer.currentMealHistory = [];
 
           // ─── Fridge: mark newly spoiled (don't delete — let player choose) ───
-          const currentTierForExpiry = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId)!;
+          const currentTierForExpiry = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId) ?? FRIDGE_TIERS[0];
           const hasWasteReduction = currentTierForExpiry?.smartFeatures?.includes("waste_reduction");
           const newFridgeItems = state.fridge.items.map((slot) => {
             if (!slot.spoiled && newPlayer.dayInGame > slot.expiresOnDay) {
@@ -1249,7 +1249,7 @@ export const useGameStore = create<GameState>()(
         const food = FOOD_CATALOG.find((f) => f.id === foodId);
         if (!food) return { success: false, reason: "آیتم نامعتبر" };
 
-        const tier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId)!;
+        const tier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId) ?? FRIDGE_TIERS[0];
         if (state.fridge.items.length >= tier.slots) {
           return { success: false, reason: `یخچال پره! (${tier.slots}/${tier.slots})` };
         }
@@ -1380,7 +1380,7 @@ export const useGameStore = create<GameState>()(
         const newTier = FRIDGE_TIERS.find((t) => t.id === tierId);
         if (!newTier) return { success: false, reason: "مدل یخچال نامعتبر" };
 
-        const currentTier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId)!;
+        const currentTier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId) ?? FRIDGE_TIERS[0];
         if (newTier.slots <= currentTier.slots) {
           return { success: false, reason: "این یخچال ارتقا نیست!" };
         }
@@ -1467,7 +1467,7 @@ export const useGameStore = create<GameState>()(
 
         // If it's a fridge, handle upgrade
         if (item.upgradeLink?.system === "fridge") {
-          const currentTier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId)!;
+          const currentTier = FRIDGE_TIERS.find((t) => t.id === state.fridge.tierId) ?? FRIDGE_TIERS[0];
           const newTier = FRIDGE_TIERS.find((t) => t.id === item.upgradeLink!.tierId);
           if (!newTier) return { success: false, reason: "مدل یخچال نامعتبر" };
           if (newTier.slots <= currentTier.slots) {

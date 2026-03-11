@@ -402,7 +402,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         id: "nap",
         name: "چرت و چای",
         emoji: "☕",
-        costs: { time: 30 },
+        costs: { energy: 5, time: 30 },
         effects: [
           { key: "energy", value: 20, label: "⚡ +۲۰ انرژی" },
           { key: "happiness", value: 8, label: "😊 +۸ خوشحالی" },
@@ -411,7 +411,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           brandName: "چای احمد",
           brandEmoji: "☕",
           displayName: "چرت با چای احمد",
-          costs: { money: 500_000, time: 30 },
+          costs: { energy: 5, money: 500_000, time: 30 },
           effects: [
             { key: "energy", value: 30, label: "⚡ +۳۰ انرژی" },
             { key: "happiness", value: 15, label: "😊 +۱۵ خوشحالی" },
@@ -422,7 +422,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         id: "movie",
         name: "فیلم و استراحت",
         emoji: "🎬",
-        costs: { time: 120 },
+        costs: { energy: 10, time: 120 },
         effects: [
           { key: "energy", value: 25, label: "⚡ +۲۵ انرژی" },
           { key: "happiness", value: 15, label: "😊 +۱۵ خوشحالی" },
@@ -431,7 +431,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           brandName: "نتفلیکس",
           brandEmoji: "🎬",
           displayName: "فیلم نتفلیکس",
-          costs: { money: 2_000_000, time: 120 },
+          costs: { energy: 8, money: 2_000_000, time: 120 },
           effects: [
             { key: "energy", value: 35, label: "⚡ +۳۵ انرژی" },
             { key: "happiness", value: 25, label: "😊 +۲۵ خوشحالی" },
@@ -443,7 +443,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
         id: "full_sleep",
         name: "خواب کامل",
         emoji: "🛏️",
-        costs: { time: 480 },
+        costs: { energy: 15, time: 480 },
         effects: [
           { key: "energy", value: 55, label: "⚡ +۵۵ انرژی" },
           { key: "happiness", value: 12, label: "😊 +۱۲ خوشحالی" },
@@ -453,7 +453,7 @@ export const ACTION_CATEGORIES: ActionCategory[] = [
           brandName: "تمپور",
           brandEmoji: "🛏️",
           displayName: "خواب با تشک تمپور",
-          costs: { money: 5_000_000, time: 480 },
+          costs: { energy: 10, money: 5_000_000, time: 480 },
           effects: [
             { key: "energy", value: 80, label: "⚡ +۸۰ انرژی" },
             { key: "happiness", value: 22, label: "😊 +۲۲ خوشحالی" },
