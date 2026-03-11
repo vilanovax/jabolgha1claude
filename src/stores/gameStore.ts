@@ -88,6 +88,25 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+// ─── Valid numeric player stat keys ───────────────────────────────────────────
+// Used to validate effect.key before applying to player via dynamic access.
+// Prevents typos in actionTemplates from silently failing at runtime.
+const VALID_PLAYER_STAT_KEYS = new Set([
+  "energy", "hunger", "happiness", "health", "xp", "stars", "level",
+]);
+
+function applyStatEffect(
+  player: Record<string, unknown>,
+  key: string,
+  value: number,
+): boolean {
+  if (!VALID_PLAYER_STAT_KEYS.has(key)) return false;
+  const current = player[key];
+  if (typeof current !== "number") return false;
+  player[key] = Math.max(0, current + value);
+  return true;
+}
+
 export function derivedEconomy(indicators: EconomicIndicators): DerivedEconomy {
   const health = Math.round(
     (100 - indicators.Unemployment_Rate) * 0.25 +
@@ -556,11 +575,8 @@ export const useGameStore = create<GameState>()(
               } else {
                 newBank.checking = Math.max(0, newBank.checking + value);
               }
-            } else if (effect.target in newPlayer) {
-              (newPlayer as Record<string, unknown>)[effect.target] = Math.max(
-                0,
-                ((newPlayer as Record<string, unknown>)[effect.target] as number) + value,
-              );
+            } else {
+              applyStatEffect(newPlayer as Record<string, unknown>, effect.target, value);
             }
           }
 
@@ -970,11 +986,8 @@ export const useGameStore = create<GameState>()(
 
           if (effect.key === "money") {
             newBank.checking = Math.max(0, newBank.checking + value);
-          } else if (effect.key in newPlayer) {
-            (newPlayer as Record<string, unknown>)[effect.key] = Math.max(
-              0,
-              ((newPlayer as Record<string, unknown>)[effect.key] as number) + value,
-            );
+          } else {
+            applyStatEffect(newPlayer as Record<string, unknown>, effect.key, value);
           }
         }
 
@@ -986,11 +999,8 @@ export const useGameStore = create<GameState>()(
           const rv = activeRisk.penalty.value;
           if (rk === "money") {
             newBank.checking = Math.max(0, newBank.checking + rv);
-          } else if (rk in newPlayer) {
-            (newPlayer as Record<string, unknown>)[rk] = Math.max(
-              0,
-              ((newPlayer as Record<string, unknown>)[rk] as number) + rv,
-            );
+          } else {
+            applyStatEffect(newPlayer as Record<string, unknown>, rk, rv);
           }
         }
 
@@ -1845,12 +1855,7 @@ export const useGameStore = create<GameState>()(
           // Apply player patches
           const newPlayer = { ...state.player };
           for (const [k, v] of Object.entries(playerPatch)) {
-            if (k in newPlayer) {
-              (newPlayer as Record<string, unknown>)[k] = Math.max(
-                0,
-                ((newPlayer as Record<string, unknown>)[k] as number) + v,
-              );
-            }
+            applyStatEffect(newPlayer as Record<string, unknown>, k, v);
           }
 
           return {

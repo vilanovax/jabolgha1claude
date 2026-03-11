@@ -7,7 +7,6 @@ export const player = {
   hunger: 55,
   happiness: 72,
   health: 80,
-  security: 58,
   money: 12_500_000,
   savings: 50_000_000,
   xp: 1240,
